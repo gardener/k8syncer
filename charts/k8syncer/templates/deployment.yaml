@@ -1,0 +1,70 @@
+apiVersion: {{ include "deploymentversion" . }}
+kind: Deployment
+metadata:
+  name: k8syncer
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: k8syncer
+    role: k8syncer
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: k8syncer
+      role: k8syncer
+  template:
+    metadata:
+      labels:
+        app: k8syncer
+        role: k8syncer
+        chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+        release: "{{ .Release.Name }}"
+        heritage: "{{ .Release.Service }}"
+    spec:
+      {{- if .Values.image.pullSecret }}
+      imagePullSecrets:
+      - name: k8syncer-image-pull
+      {{- end }}
+      {{- if not .Values.config.kubeconfig }}
+      serviceAccountName: k8syncer
+      {{- end }}
+      containers:
+      - name: k8syncer
+        image: "{{ include "image" .Values.image }}"
+        imagePullPolicy: IfNotPresent
+        command:
+        - /k8syncer
+        - --config=/etc/config/config.yaml
+        {{- if .Values.config.kubeconfig }}
+        - --kubeconfig=/etc/config/kubeconfig
+        {{- end }}
+        {{- if .Values.logging }}
+        {{- if .Values.logging.verbosity }}
+        - -v={{ .Values.logging.verbosity }}
+        {{- end }}
+        {{- end }}
+        volumeMounts:
+        - name: config
+          mountPath: /etc/config
+          readOnly: true
+        resources:
+          requests:
+            cpu: {{ .Values.resources.requests.cpu | default "100m" }}
+            memory: {{ .Values.resources.requests.memory | default "256Mi" }}
+          {{- if .Values.resources.limits }}
+          limits:
+          {{- .Values.resources.limits | toYaml | nindent 12 }}
+          {{- end }}
+      volumes:
+      - name: config
+        projected:
+          sources:
+          - configMap:
+              name: k8syncer-config
+        {{- if .Values.config.kubeconfig }}
+          - secret:
+              name: k8syncer-target
+        {{- end }}

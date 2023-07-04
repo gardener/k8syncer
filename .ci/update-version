@@ -1,0 +1,14 @@
+#!/bin/bash -eu
+#
+# SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and Gardener contributors
+#
+# SPDX-License-Identifier: Apache-2.0
+
+pushd $REPO_DIR 1> /dev/null
+
+sed -E -i -e "s?version: [[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+.*?version: $EFFECTIVE_VERSION?1" ./charts/k8syncer/Chart.yaml
+sed -i -e "s?  tag: .*?  tag: ${EFFECTIVE_VERSION}?" "./charts/k8syncer/values.yaml"
+
+echo "Version set to $EFFECTIVE_VERSION"
+
+popd 1> /dev/null

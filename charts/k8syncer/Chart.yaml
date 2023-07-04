@@ -1,0 +1,4 @@
+apiVersion: v1
+description: A Helm chart for the k8syncer
+name: k8syncer
+version: 0.1.0-dev
