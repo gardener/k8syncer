@@ -1,0 +1,8 @@
+run:
+  concurrency: 4
+  deadline: 10m
+  go: '1.20'
+
+issues:
+  exclude:
+  - "Error return value of `.(.*)..Append` is not checked"

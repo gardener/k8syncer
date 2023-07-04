@@ -1,0 +1,42 @@
+{{- if not .Values.config.kubeconfig }}
+apiVersion: {{ include "rbacversion" . }}
+kind: ClusterRole
+metadata:
+  name: gardener.cloud:k8syncer
+rules:
+{{- range .Values.config.syncConfigs }}
+- apiGroups:
+  - {{ .resource.group | default "" }}
+  resources:
+  {{- if .resource.resource }}
+  - {{ .resource.resource }}
+  {{- else }}
+  - {{ .resource.kind | lower }}s
+  {{- if hasSuffix "y" .resource.kind }}
+  - {{ .resource.kind | lower | trimSuffix "y" }}ies
+  {{- end }}
+  {{- end }}
+  verbs:
+  - get
+  - watch
+  - list
+  {{- if .state }}
+  {{- if ne .state.type "none" }}
+  - update
+  {{- end }}
+  {{- end }}
+{{- end }}
+---
+kind: ClusterRoleBinding
+apiVersion: {{ include "rbacversion" . }}
+metadata:
+  name: gardener.cloud:k8syncer
+subjects:
+- kind: ServiceAccount
+  name: k8syncer
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: gardener.cloud:k8syncer
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

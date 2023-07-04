@@ -1,0 +1,51 @@
+# SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and Gardener contributors
+#
+# SPDX-License-Identifier: Apache-2.0
+
+k8syncer:
+  template: 'default'
+  base_definition:
+    repo: ~
+
+    traits:
+      version:
+        preprocess: 'inject-commit-hash'
+        inject_effective_version: true
+      component_descriptor: ~
+      publish:
+        dockerimages:
+          k8syncer:
+            registry: 'gcr-readwrite'
+            target: 'k8syncer'
+            image: 'eu.gcr.io/gardener-project/k8syncer'
+            tag_as_latest: true
+
+    steps:
+      verify:
+        image: 'golang:1.20'
+
+  jobs:
+    head-update:
+      traits:
+        draft_release: ~
+        notifications:
+          default:
+            on_error:
+              triggering_policy: 'always'
+              recipients:
+              - committers
+              - codeowners
+
+    pull-request:
+      traits:
+        pull-request: ~
+
+    release:
+      traits:
+        version:
+          preprocess: 'finalize'
+        release:
+          nextversion: 'bump_minor'
+          next_version_callback: '.ci/update-version'
+          git_tags:
+          - ref_template: 'refs/tags/{VERSION}'
