@@ -1,6 +1,6 @@
 # K8Syncer
 
-K8Syncer is a tool to backup k8s resources into some kind of storage.
+K8Syncer is a tool to backup k8s resources into some kind of storage. While it was designed to be easily extensible with further storage options, the primary goal was to be able to backup resources from a k8s cluster into a git repository, and the tool does not support much more than this use-case at the moment.
 
 See [here](docs/storage/README.md) for a documentation of the supported storage types and [here](docs/usage/configuration.md) for how to configure the tool.
 
