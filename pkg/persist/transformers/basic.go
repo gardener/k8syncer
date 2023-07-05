@@ -25,13 +25,14 @@ type Basic struct {
 // NewBasic constructs a new basic transformer.
 // It is initialized with a list of fields which should be retained in the metadata.
 // In theory, this list can be modified, but adding volatile fields to it is strongly discouraged.
-// By default, the following fields are retained: name, generateName, namespace, uid, labels, ownerReferences
+// By default, the following fields are retained: name, generateName, namespace, generation, uid, labels, ownerReferences
 func NewBasic() *Basic {
 	return &Basic{
 		MetadataCopyFields: []string{
 			"name",
 			"generateName",
 			"namespace",
+			"generation",
 			"uid",
 			"labels",
 			"ownerReferences",

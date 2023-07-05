@@ -13,6 +13,7 @@ The basic transformer removes highly volatile fields from the k8s resource and m
   - `name`
   - `generateName`
   - `namespace`
+  - `generation`
   - `uid`
   - `labels`
   - `ownerReferences`
@@ -45,6 +46,7 @@ kind: Deployment
 metadata:
   name: foo
   namespace: default
+  generation: 1
   uid: af230f52-6c4f-4c75-90a4-c826a62c03c0
 spec: <deployment spec>
 ```
