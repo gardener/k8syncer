@@ -110,7 +110,7 @@ func initializePersister(ctx context.Context, stDef *config.StorageDefinition) (
 		}
 		p = persist.AddLoggingLayer(gp, logging.DEBUG)
 	case config.STORAGE_TYPE_MOCK:
-		p, err = mockpersist.New(stDef.MockConfig, stDef.FileSystemConfig)
+		p, err = mockpersist.New(stDef.MockConfig, stDef.FileSystemConfig, false)
 		if err != nil {
 			return nil, fmt.Errorf("error creating FileSystemPersister: %w", err)
 		}
