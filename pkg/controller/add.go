@@ -62,10 +62,7 @@ func AddControllerToManager(baseLogger logging.Logger, mgr manager.Manager, cfg 
 	)
 	if syncConfig.Finalize != nil && *syncConfig.Finalize {
 		// to remove finalizers, we have to get notified for deletion timestamps
-		preds = predicate.Or(preds, predicate.NewPredicateFuncs(func(obj client.Object) bool {
-			del := obj.GetDeletionTimestamp()
-			return del != nil && !del.IsZero()
-		}))
+		preds = predicate.Or(preds, DeletionTimestampChangedPredicate{})
 	}
 	if syncConfig.Resource.Namespace != "" {
 		preds = predicate.And(preds, predicate.NewPredicateFuncs(func(obj client.Object) bool {
@@ -81,7 +78,7 @@ func AddControllerToManager(baseLogger logging.Logger, mgr manager.Manager, cfg 
 		Complete(c)
 }
 
-// OwnerReferencesChangedPredicate ignores changes unless the owner references are affected.
+// OwnerReferencesChangedPredicate reacts to changes of the owner references.
 type OwnerReferencesChangedPredicate struct {
 	predicate.Funcs
 }
@@ -93,7 +90,24 @@ func (OwnerReferencesChangedPredicate) Update(e event.UpdateEvent) bool {
 	if e.ObjectNew == nil {
 		return false
 	}
-	newOwners := e.ObjectNew.GetOwnerReferences()
 	oldOwners := e.ObjectOld.GetOwnerReferences()
+	newOwners := e.ObjectNew.GetOwnerReferences()
 	return !(len(newOwners) == len(oldOwners) && reflect.DeepEqual(newOwners, oldOwners))
+}
+
+// DeletionTimestampChangedPredicate reacts to changes of the deletion timestamp.
+type DeletionTimestampChangedPredicate struct {
+	predicate.Funcs
+}
+
+func (DeletionTimestampChangedPredicate) Update(e event.UpdateEvent) bool {
+	if e.ObjectOld == nil {
+		return false
+	}
+	if e.ObjectNew == nil {
+		return false
+	}
+	oldDel := e.ObjectOld.GetDeletionTimestamp()
+	newDel := e.ObjectNew.GetDeletionTimestamp()
+	return !reflect.DeepEqual(newDel, oldDel)
 }
