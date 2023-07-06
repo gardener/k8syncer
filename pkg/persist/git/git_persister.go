@@ -20,7 +20,6 @@ import (
 	"github.com/gardener/k8syncer/pkg/utils"
 	"github.com/gardener/k8syncer/pkg/utils/git"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -116,15 +115,6 @@ func (p *GitPersister) Get(ctx context.Context, name, namespace string, gvk sche
 	return data, err
 }
 
-func (p *GitPersister) Persist(ctx context.Context, resource *unstructured.Unstructured, gvk schema.GroupVersionKind, rt persist.ResourceTransformer, subPath string) error {
-	err := p.Persister.Persist(ctx, resource, gvk, rt, subPath)
-	if err != nil {
-		return err
-	}
-	err = p.repo.CommitAndPush(*p.injectedLogger, p.expectChangesFromRemote, fmt.Sprintf("update %s %s", utils.GVKToString(gvk, true), getNamespacedName(resource.GetName(), resource.GetNamespace())))
-	return err
-}
-
 func (p *GitPersister) PersistData(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, data []byte, subPath string) error {
 	err := p.Persister.PersistData(ctx, name, namespace, gvk, data, subPath)
 	if err != nil {
@@ -135,15 +125,6 @@ func (p *GitPersister) PersistData(ctx context.Context, name, namespace string, 
 		action = "delete"
 	}
 	err = p.repo.CommitAndPush(*p.injectedLogger, p.expectChangesFromRemote, fmt.Sprintf("%s %s %s", action, utils.GVKToString(gvk, true), getNamespacedName(name, namespace)))
-	return err
-}
-
-func (p *GitPersister) Delete(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) error {
-	err := p.Persister.Delete(ctx, name, namespace, gvk, subPath)
-	if err != nil {
-		return err
-	}
-	err = p.repo.CommitAndPush(*p.injectedLogger, p.expectChangesFromRemote, fmt.Sprintf("delete %s %s", utils.GVKToString(gvk, true), getNamespacedName(name, namespace)))
 	return err
 }
 

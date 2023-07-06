@@ -108,7 +108,8 @@ func NewController(client client.Client, cfg *config.K8SyncerConfiguration, sync
 // The Controller will requeue the Request to be processed again if an error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (c *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-	log, ctx := logging.FromContextOrNew(ctx, nil, constants.Logging.KEY_RESOURCE_NAME, req.Name, constants.Logging.KEY_RESOURCE_NAMESPACE, req.Namespace)
+	log := logging.FromContextOrDiscard(ctx).WithValues(constants.Logging.KEY_RESOURCE_NAME, req.Name, constants.Logging.KEY_RESOURCE_NAMESPACE, req.Namespace)
+	ctx = logging.NewContext(ctx, log)
 	log.Info("Starting reconcile")
 
 	obj := &unstructured.Unstructured{}
@@ -143,9 +144,9 @@ func (c *Controller) handleCreateOrUpdate(ctx context.Context, obj *unstructured
 			errMsg := "error adding finalizer"
 			log.Error(err, errMsg)
 			errs := utils.NewErrorList(fmt.Errorf("%s: %w", errMsg, err))
-			err2 := c.updateStateOnResource(ctx, obj, state.STATE_FIELD_PHASE, state.PHASE_ERROR, state.STATE_FIELD_DETAIL, errs.Error())
+			err2 := c.updateStateOnResource(ctx, obj, state.STATE_FIELD_PHASE, state.PHASE_ERROR, state.STATE_FIELD_DETAIL, errs.Aggregate().Error())
 			errs.Append(err2)
-			return errs
+			return errs.Aggregate()
 		}
 	}
 
@@ -164,9 +165,9 @@ func (c *Controller) handleCreateOrUpdate(ctx context.Context, obj *unstructured
 			errMsg := "error while reading old resource"
 			curLog.Error(err, errMsg)
 			errs := utils.NewErrorList(fmt.Errorf("[%s] %s: %w", storage.Name(), errMsg, err))
-			err2 := c.updateStateOnResource(ctx, obj, state.STATE_FIELD_PHASE, state.PHASE_ERROR, state.STATE_FIELD_DETAIL, errs.Error())
+			err2 := c.updateStateOnResource(ctx, obj, state.STATE_FIELD_PHASE, state.PHASE_ERROR, state.STATE_FIELD_DETAIL, errs.Aggregate().Error())
 			errs.Append(err2)
-			return errs
+			return errs.Aggregate()
 		}
 		// transform new resource
 		newData, err := storage.Transformer.TransformAndSerialize(obj)
@@ -174,9 +175,9 @@ func (c *Controller) handleCreateOrUpdate(ctx context.Context, obj *unstructured
 			errMsg := "error while transforming resource"
 			curLog.Error(err, errMsg)
 			errs := utils.NewErrorList(fmt.Errorf("[%s] %s: %w", storage.Name(), errMsg, err))
-			err2 := c.updateStateOnResource(ctx, obj, state.STATE_FIELD_PHASE, state.PHASE_ERROR, state.STATE_FIELD_DETAIL, errs.Error())
+			err2 := c.updateStateOnResource(ctx, obj, state.STATE_FIELD_PHASE, state.PHASE_ERROR, state.STATE_FIELD_DETAIL, errs.Aggregate().Error())
 			errs.Append(err2)
-			return errs
+			return errs.Aggregate()
 		}
 		updateRequired := true
 
@@ -195,9 +196,9 @@ func (c *Controller) handleCreateOrUpdate(ctx context.Context, obj *unstructured
 				errMsg := "error while persisting resource"
 				curLog.Error(err, errMsg)
 				errs := utils.NewErrorList(fmt.Errorf("[%s] %s: %w", storage.Name(), errMsg, err))
-				err2 := c.updateStateOnResource(ctx, obj, state.STATE_FIELD_PHASE, state.PHASE_ERROR, state.STATE_FIELD_DETAIL, errs.Error())
+				err2 := c.updateStateOnResource(ctx, obj, state.STATE_FIELD_PHASE, state.PHASE_ERROR, state.STATE_FIELD_DETAIL, errs.Aggregate().Error())
 				errs.Append(err2)
-				return errs
+				return errs.Aggregate()
 			}
 		}
 	}
@@ -233,25 +234,25 @@ func (c *Controller) handleDelete(ctx context.Context, obj *unstructured.Unstruc
 			curLog.Error(err, errMsg)
 			errs := utils.NewErrorList(fmt.Errorf("%s: %w", errMsg, err))
 			if hasFinalizer {
-				err2 := c.updateStateOnResource(ctx, obj, state.STATE_FIELD_PHASE, state.PHASE_ERROR_DELETING, state.STATE_FIELD_DETAIL, errs.Error())
+				err2 := c.updateStateOnResource(ctx, obj, state.STATE_FIELD_PHASE, state.PHASE_ERROR_DELETING, state.STATE_FIELD_DETAIL, errs.Aggregate().Error())
 				errs.Append(err2)
 			}
-			return errs
+			return errs.Aggregate()
 		}
 		if !exists {
 			curLog.Debug("No data found for current resource, skipping deletion")
 			return nil
 		}
-		err = storage.Persister.Delete(curCtx, obj.GetName(), obj.GetNamespace(), c.GVK, storage.SubPath)
+		err = storage.Persister.PersistData(curCtx, obj.GetName(), obj.GetNamespace(), c.GVK, nil, storage.SubPath)
 		if err != nil {
 			errMsg := "error while deleting data"
 			curLog.Error(err, errMsg)
 			errs := utils.NewErrorList(fmt.Errorf("%s: %w", errMsg, err))
 			if hasFinalizer {
-				err2 := c.updateStateOnResource(ctx, obj, state.STATE_FIELD_PHASE, state.PHASE_ERROR_DELETING, state.STATE_FIELD_DETAIL, errs.Error())
+				err2 := c.updateStateOnResource(ctx, obj, state.STATE_FIELD_PHASE, state.PHASE_ERROR_DELETING, state.STATE_FIELD_DETAIL, errs.Aggregate().Error())
 				errs.Append(err2)
 			}
-			return errs
+			return errs.Aggregate()
 		}
 	}
 
@@ -265,9 +266,9 @@ func (c *Controller) handleDelete(ctx context.Context, obj *unstructured.Unstruc
 			errMsg := "error removing finalizer"
 			log.Error(err, errMsg)
 			errs := utils.NewErrorList(fmt.Errorf("%s: %w", errMsg, err))
-			err2 := c.updateStateOnResource(ctx, obj, state.STATE_FIELD_PHASE, state.PHASE_ERROR, state.STATE_FIELD_DETAIL, errs.Error())
+			err2 := c.updateStateOnResource(ctx, obj, state.STATE_FIELD_PHASE, state.PHASE_ERROR, state.STATE_FIELD_DETAIL, errs.Aggregate().Error())
 			errs.Append(err2)
-			return errs
+			return errs.Aggregate()
 		}
 	}
 

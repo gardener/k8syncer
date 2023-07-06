@@ -21,9 +21,7 @@ type Queue[T any] interface {
 	Clear()
 }
 
-type ErrQueueEmpty error
-
-var ERR_QUEUE_EMPTY ErrQueueEmpty = errors.New("queue is empty")
+var ErrQueueEmpty = errors.New("queue is empty")
 
 var _ Queue[any] = &BasicQueue[any]{}
 
@@ -56,7 +54,7 @@ func (q *BasicQueue[T]) Size() int {
 func (q *BasicQueue[T]) Peek() (T, error) {
 	if q.first == nil {
 		var zero T
-		return zero, ERR_QUEUE_EMPTY
+		return zero, ErrQueueEmpty
 	}
 	return q.first.value, nil
 }
@@ -66,7 +64,7 @@ func (q *BasicQueue[T]) Peek() (T, error) {
 func (q *BasicQueue[T]) Poll() (T, error) {
 	if q.first == nil {
 		var zero T
-		return zero, ERR_QUEUE_EMPTY
+		return zero, ErrQueueEmpty
 	}
 	res := q.first.value
 	q.first = q.first.next
@@ -80,7 +78,11 @@ func (q *BasicQueue[T]) Push(elems ...T) {
 		return
 	}
 	head, tail := toElements[T](elems)
-	q.last.next = head
+	if q.Size() == 0 {
+		q.first = head
+	} else {
+		q.last.next = head
+	}
 	q.last = tail
 	q.size += len(elems)
 }

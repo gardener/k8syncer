@@ -20,16 +20,9 @@ type Persister interface {
 	// Get returns the currently persisted data for the specified resource.
 	// If no data for the resource exists, it is expected to return (nil, nil) and not an error.
 	Get(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) ([]byte, error)
-	// Persist persists the specified resource.
-	// In most cases, it simply calls PersistData with the data returned by rt.TransformAndSerialize.
-	Persist(ctx context.Context, resource *unstructured.Unstructured, gvk schema.GroupVersionKind, rt ResourceTransformer, subPath string) error
-	// PersistData works like persist, but for an already serialized resource.
-	// Calling PersistData with nil data will delete the corresponding resource from persistency.
+	// PersistData persists the specified resource, or removes it from persistence if data is nil.
+	// Calling it with nil data on a resource which doesn't exist in persistence must not return an error.
 	PersistData(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, data []byte, subPath string) error
-	// Delete removes the specified resource from persistency.
-	// In most cases, it simply calls PersistData with a nil data object.
-	// Calling Delete for a resource which doesn't exist is expected to not return an error.
-	Delete(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) error
 	// InternalPersister returns the internal persister, if the current implementation wraps another implementation.
 	// Otherwise, nil is returned.
 	InternalPersister() Persister

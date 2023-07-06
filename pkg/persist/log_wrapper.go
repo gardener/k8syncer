@@ -8,7 +8,6 @@ import (
 	"context"
 
 	"github.com/gardener/landscaper/controller-utils/pkg/logging"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/gardener/k8syncer/pkg/utils/constants"
@@ -110,32 +109,6 @@ func (lwp *logWrappedPersister) Get(ctx context.Context, name, namespace string,
 	return res, err
 }
 
-func (lwp *logWrappedPersister) Persist(ctx context.Context, resource *unstructured.Unstructured, gvk schema.GroupVersionKind, rt ResourceTransformer, subPath string) error {
-	// create logger with context information
-	curLog := lwp.buildLogger(ctx, resource.GetName(), resource.GetNamespace(), gvk)
-
-	// check for logger injection
-	if lwp.injectable != nil {
-		lwp.injectable.InjectLogger(&curLog)
-	}
-
-	// call wrapped function
-	curLog.Log(lwp.logLevel, constants.Logging.CALL_PERSIST_MSG)
-	err := lwp.Persister.Persist(ctx, resource, gvk, rt, subPath)
-	errOccurred := err != nil
-	if errOccurred {
-		curLog = curLog.WithValues(constants.Logging.KEY_ERROR, err.Error())
-	}
-	curLog.Log(lwp.logLevel, constants.Logging.CALL_PERSIST_FINISHED_MSG, constants.Logging.KEY_ERROR_OCCURRED, errOccurred)
-
-	// remove injected logger again
-	if lwp.injectable != nil {
-		lwp.injectable.InjectLogger(&StaticDiscardLogger)
-	}
-
-	return err
-}
-
 func (lwp *logWrappedPersister) PersistData(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, data []byte, subPath string) error {
 	// create logger with context information
 	curLog := lwp.buildLogger(ctx, name, namespace, gvk).WithValues(constants.Logging.KEY_PERSIST_DATA_IS_DELETE, data == nil)
@@ -153,32 +126,6 @@ func (lwp *logWrappedPersister) PersistData(ctx context.Context, name, namespace
 		curLog = curLog.WithValues(constants.Logging.KEY_ERROR, err.Error())
 	}
 	curLog.Log(lwp.logLevel, constants.Logging.CALL_PERSIST_DATA_FINISHED_MSG, constants.Logging.KEY_ERROR_OCCURRED, errOccurred)
-
-	// remove injected logger again
-	if lwp.injectable != nil {
-		lwp.injectable.InjectLogger(&StaticDiscardLogger)
-	}
-
-	return err
-}
-
-func (lwp *logWrappedPersister) Delete(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) error {
-	// create logger with context information
-	curLog := lwp.buildLogger(ctx, name, namespace, gvk)
-
-	// check for logger injection
-	if lwp.injectable != nil {
-		lwp.injectable.InjectLogger(&curLog)
-	}
-
-	// call wrapped function
-	curLog.Log(lwp.logLevel, constants.Logging.CALL_DELETE_MSG)
-	err := lwp.Persister.Delete(ctx, name, namespace, gvk, subPath)
-	errOccurred := err != nil
-	if errOccurred {
-		curLog = curLog.WithValues(constants.Logging.KEY_ERROR, err.Error())
-	}
-	curLog.Log(lwp.logLevel, constants.Logging.CALL_DELETE_FINISHED_MSG, constants.Logging.KEY_ERROR_OCCURRED, errOccurred)
 
 	// remove injected logger again
 	if lwp.injectable != nil {

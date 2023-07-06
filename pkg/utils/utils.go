@@ -30,45 +30,6 @@ func Ptr[T any](value T) *T {
 	return &value
 }
 
-type ErrorList struct {
-	Errs []error
-}
-
-func NewErrorList(errs ...error) *ErrorList {
-	res := &ErrorList{
-		Errs: []error{},
-	}
-	return res.Append(errs...)
-}
-
-func (el *ErrorList) Error() string {
-	if len(el.Errs) == 0 {
-		return ""
-	} else if len(el.Errs) == 1 {
-		return el.Errs[0].Error()
-	}
-	sb := strings.Builder{}
-	sb.WriteString("multiple errors occurred:")
-	for _, e := range el.Errs {
-		sb.WriteString("\n")
-		sb.WriteString(e.Error())
-	}
-	return sb.String()
-}
-
-// Append appends all given errors to the ErrorList.
-// This modifies the receiver object.
-// nil pointers in the arguments are ignored.
-// Returns the receiver for chaining.
-func (el *ErrorList) Append(errs ...error) *ErrorList {
-	for _, e := range errs {
-		if e != nil {
-			el.Errs = append(el.Errs, e)
-		}
-	}
-	return el
-}
-
 // AddFinalizer adds a k8syncer finalizer to the object, if it doesn't already have one.
 // Returns true if the finalizers changed.
 func AddFinalizer(obj client.Object) bool {
