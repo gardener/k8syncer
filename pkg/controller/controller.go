@@ -5,7 +5,6 @@
 package controller
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
@@ -41,7 +40,7 @@ type StorageConfiguration struct {
 	*config.StorageReference
 	*config.StorageDefinition
 	Persister   persist.Persister
-	Transformer persist.ResourceTransformer
+	Transformer persist.Transformer
 }
 
 func (sc *StorageConfiguration) Name() string {
@@ -159,47 +158,21 @@ func (c *Controller) handleCreateOrUpdate(ctx context.Context, obj *unstructured
 	for _, storage := range c.StorageConfigs {
 		curLog := log.WithValues(constants.Logging.KEY_RESOURCE_STORAGE_ID, storage.Name())
 		curCtx := logging.NewContext(ctx, curLog)
-		// read existing data for resource
-		oldData, err := storage.Persister.Get(curCtx, obj.GetName(), obj.GetNamespace(), c.GVK, storage.SubPath)
+
+		// persist changes
+		_, changed, err := storage.Persister.Persist(curCtx, obj, storage.Transformer, storage.SubPath)
 		if err != nil {
-			errMsg := "error while reading old resource"
+			errMsg := "error while persisting resource"
 			curLog.Error(err, errMsg)
 			errs := utils.NewErrorList(fmt.Errorf("[%s] %s: %w", storage.Name(), errMsg, err))
 			err2 := c.updateStateOnResource(ctx, obj, state.STATE_FIELD_PHASE, state.PHASE_ERROR, state.STATE_FIELD_DETAIL, errs.Aggregate().Error())
 			errs.Append(err2)
 			return errs.Aggregate()
 		}
-		// transform new resource
-		newData, err := storage.Transformer.TransformAndSerialize(obj)
-		if err != nil {
-			errMsg := "error while transforming resource"
-			curLog.Error(err, errMsg)
-			errs := utils.NewErrorList(fmt.Errorf("[%s] %s: %w", storage.Name(), errMsg, err))
-			err2 := c.updateStateOnResource(ctx, obj, state.STATE_FIELD_PHASE, state.PHASE_ERROR, state.STATE_FIELD_DETAIL, errs.Aggregate().Error())
-			errs.Append(err2)
-			return errs.Aggregate()
-		}
-		updateRequired := true
 
 		// if corresponding resource exists in storage
-		if oldData != nil {
-			if bytes.Equal(oldData, newData) {
-				curLog.Debug("No relevant fields have changed, updating the resource is not necessary")
-				updateRequired = false
-			}
-		}
-
-		if updateRequired {
-			// persist changes
-			err := storage.Persister.PersistData(curCtx, obj.GetName(), obj.GetNamespace(), c.GVK, newData, storage.SubPath)
-			if err != nil {
-				errMsg := "error while persisting resource"
-				curLog.Error(err, errMsg)
-				errs := utils.NewErrorList(fmt.Errorf("[%s] %s: %w", storage.Name(), errMsg, err))
-				err2 := c.updateStateOnResource(ctx, obj, state.STATE_FIELD_PHASE, state.PHASE_ERROR, state.STATE_FIELD_DETAIL, errs.Aggregate().Error())
-				errs.Append(err2)
-				return errs.Aggregate()
-			}
+		if !changed {
+			curLog.Debug("No relevant fields have changed, resource has not been updated in storage")
 		}
 	}
 
@@ -243,7 +216,7 @@ func (c *Controller) handleDelete(ctx context.Context, obj *unstructured.Unstruc
 			curLog.Debug("No data found for current resource, skipping deletion")
 			return nil
 		}
-		err = storage.Persister.PersistData(curCtx, obj.GetName(), obj.GetNamespace(), c.GVK, nil, storage.SubPath)
+		err = storage.Persister.Delete(curCtx, obj.GetName(), obj.GetNamespace(), c.GVK, storage.SubPath)
 		if err != nil {
 			errMsg := "error while deleting data"
 			curLog.Error(err, errMsg)

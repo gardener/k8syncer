@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/gardener/landscaper/controller-utils/pkg/logging"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/gardener/k8syncer/pkg/utils/constants"
@@ -53,13 +54,13 @@ func AddLoggingLayer(p Persister, logLevel logging.LogLevel) Persister {
 	return res
 }
 
-func (lwp *logWrappedPersister) buildLogger(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind) logging.Logger { // TODO remove superfluous arguments
+func (lwp *logWrappedPersister) buildLogger(ctx context.Context) logging.Logger { // TODO remove superfluous arguments
 	return logging.FromContextOrDiscard(ctx)
 }
 
 func (lwp *logWrappedPersister) Exists(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) (bool, error) {
 	// create logger with context information
-	curLog := lwp.buildLogger(ctx, name, namespace, gvk)
+	curLog := lwp.buildLogger(ctx)
 
 	// check for logger injection
 	if lwp.injectable != nil {
@@ -83,9 +84,9 @@ func (lwp *logWrappedPersister) Exists(ctx context.Context, name, namespace stri
 	return res, err
 }
 
-func (lwp *logWrappedPersister) Get(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) ([]byte, error) {
+func (lwp *logWrappedPersister) Get(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) (*unstructured.Unstructured, error) {
 	// create logger with context information
-	curLog := lwp.buildLogger(ctx, name, namespace, gvk)
+	curLog := lwp.buildLogger(ctx)
 
 	// check for logger injection
 	if lwp.injectable != nil {
@@ -109,9 +110,9 @@ func (lwp *logWrappedPersister) Get(ctx context.Context, name, namespace string,
 	return res, err
 }
 
-func (lwp *logWrappedPersister) PersistData(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, data []byte, subPath string) error {
+func (lwp *logWrappedPersister) Persist(ctx context.Context, resource *unstructured.Unstructured, t Transformer, subPath string) (*unstructured.Unstructured, bool, error) {
 	// create logger with context information
-	curLog := lwp.buildLogger(ctx, name, namespace, gvk).WithValues(constants.Logging.KEY_PERSIST_DATA_IS_DELETE, data == nil)
+	curLog := lwp.buildLogger(ctx)
 
 	// check for logger injection
 	if lwp.injectable != nil {
@@ -119,13 +120,39 @@ func (lwp *logWrappedPersister) PersistData(ctx context.Context, name, namespace
 	}
 
 	// call wrapped function
-	curLog.Log(lwp.logLevel, constants.Logging.CALL_PERSIST_DATA_MSG)
-	err := lwp.Persister.PersistData(ctx, name, namespace, gvk, data, subPath)
+	curLog.Log(lwp.logLevel, constants.Logging.CALL_PERSIST_MSG)
+	persisted, changed, err := lwp.Persister.Persist(ctx, resource, t, subPath)
 	errOccurred := err != nil
 	if errOccurred {
 		curLog = curLog.WithValues(constants.Logging.KEY_ERROR, err.Error())
 	}
-	curLog.Log(lwp.logLevel, constants.Logging.CALL_PERSIST_DATA_FINISHED_MSG, constants.Logging.KEY_ERROR_OCCURRED, errOccurred)
+	curLog.Log(lwp.logLevel, constants.Logging.CALL_PERSIST_FINISHED_MSG, constants.Logging.KEY_ERROR_OCCURRED, errOccurred)
+
+	// remove injected logger again
+	if lwp.injectable != nil {
+		lwp.injectable.InjectLogger(&StaticDiscardLogger)
+	}
+
+	return persisted, changed, err
+}
+
+func (lwp *logWrappedPersister) Delete(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) error {
+	// create logger with context information
+	curLog := lwp.buildLogger(ctx)
+
+	// check for logger injection
+	if lwp.injectable != nil {
+		lwp.injectable.InjectLogger(&curLog)
+	}
+
+	// call wrapped function
+	curLog.Log(lwp.logLevel, constants.Logging.CALL_DELETE_MSG)
+	err := lwp.Persister.Delete(ctx, name, namespace, gvk, subPath)
+	errOccurred := err != nil
+	if errOccurred {
+		curLog = curLog.WithValues(constants.Logging.KEY_ERROR, err.Error())
+	}
+	curLog.Log(lwp.logLevel, constants.Logging.CALL_DELETE_FINISHED_MSG, constants.Logging.KEY_ERROR_OCCURRED, errOccurred)
 
 	// remove injected logger again
 	if lwp.injectable != nil {

@@ -5,6 +5,7 @@
 package filesystem
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -22,6 +23,7 @@ import (
 	"github.com/mandelsoft/vfs/pkg/vfs"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/yaml"
 )
 
 var _ persist.Persister = &FileSystemPersister{}
@@ -99,70 +101,37 @@ func NewForMemory(cfg *config.FileSystemConfiguration) (*FileSystemPersister, er
 }
 
 func (p *FileSystemPersister) Exists(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) (bool, error) {
-	filePath, _ := p.GetResourceFilepath(name, namespace, gvk, subPath)
-	return vfs.FileExists(p.Fs, filePath)
+	filepath, _ := p.GetResourceFilepath(name, namespace, gvk, subPath)
+	return vfs.FileExists(p.Fs, filepath)
 }
 
-func (p *FileSystemPersister) Get(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) ([]byte, error) {
-	filePath, _ := p.GetResourceFilepath(name, namespace, gvk, subPath)
-	exists, err := vfs.FileExists(p.Fs, filePath)
+func (p *FileSystemPersister) getRaw(ctx context.Context, filepath string) ([]byte, error) {
+	exists, err := vfs.FileExists(p.Fs, filepath)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
 		return nil, nil
 	}
-	return vfs.ReadFile(p.Fs, filePath)
+	return vfs.ReadFile(p.Fs, filepath)
 }
 
-func (p *FileSystemPersister) Persist(ctx context.Context, resource *unstructured.Unstructured, gvk schema.GroupVersionKind, rt persist.ResourceTransformer, subPath string) error {
-	data, err := rt.TransformAndSerialize(resource)
+func (p *FileSystemPersister) Get(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) (*unstructured.Unstructured, error) {
+	filepath, _ := p.GetResourceFilepath(name, namespace, gvk, subPath)
+	data, err := p.getRaw(ctx, filepath)
 	if err != nil {
-		return fmt.Errorf("unable to transform and serialize resource: %w", err)
+		return nil, err
 	}
-	return p.PersistData(ctx, resource.GetName(), resource.GetNamespace(), gvk, data, subPath)
+	return ConvertFromPersistence(data)
 }
 
-func (p *FileSystemPersister) PersistData(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, data []byte, subPath string) error {
-	filepath, nsdir := p.GetResourceFilepath(name, namespace, gvk, subPath)
+func (p *FileSystemPersister) persistRaw(ctx context.Context, data []byte, filepath string) error {
 	dirpath := vfs.Dir(p.Fs, filepath)
 	parentDirExists, err := vfs.DirExists(p.Fs, dirpath)
 	if err != nil {
 		return err
 	}
 
-	// handle deletion
-	if data == nil {
-		parentDirIsNamespaceDir := nsdir != "" && nsdir == vfs.Base(p.Fs, dirpath)
-		fileExists, err := vfs.FileExists(p.Fs, filepath)
-		if err != nil {
-			return err
-		}
-
-		if fileExists {
-			err := p.Fs.Remove(filepath)
-			if err != nil {
-				return err
-			}
-		}
-		if parentDirExists && parentDirIsNamespaceDir {
-			// check if namespace dir is now empty
-			contents, err := vfs.ReadDir(p.Fs, dirpath)
-			if err != nil {
-				return err
-			}
-			if len(contents) == 0 {
-				// namespace dir is empty, remove it
-				err := p.Fs.RemoveAll(dirpath)
-				if err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-	}
-
-	// handle creation/update
 	if !parentDirExists {
 		// create directory if it doesn't exist
 		err := p.Fs.MkdirAll(dirpath, os.ModeDir|os.ModePerm)
@@ -170,11 +139,63 @@ func (p *FileSystemPersister) PersistData(ctx context.Context, name, namespace s
 			return err
 		}
 	}
+
 	return vfs.WriteFile(p.Fs, filepath, data, os.ModePerm)
 }
 
+func (p *FileSystemPersister) Persist(ctx context.Context, resource *unstructured.Unstructured, t persist.Transformer, subPath string) (*unstructured.Unstructured, bool, error) {
+	filepath, _ := p.GetResourceFilepath(resource.GetName(), resource.GetNamespace(), resource.GroupVersionKind(), subPath)
+	existingData, err := p.getRaw(ctx, filepath)
+	if err != nil {
+		return nil, false, err
+	}
+	transformed, err := t.Transform(resource)
+	if err != nil {
+		return nil, false, err
+	}
+	newData, err := ConvertToPersistence(transformed, nil)
+	if bytes.Equal(newData, existingData) {
+		return transformed, false, nil
+	}
+	err = p.persistRaw(ctx, newData, filepath)
+	return transformed, true, err
+}
+
 func (p *FileSystemPersister) Delete(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) error {
-	return p.PersistData(ctx, name, namespace, gvk, nil, subPath)
+	filepath, nsdir := p.GetResourceFilepath(name, namespace, gvk, subPath)
+	dirpath := vfs.Dir(p.Fs, filepath)
+	parentDirExists, err := vfs.DirExists(p.Fs, dirpath)
+	if err != nil {
+		return err
+	}
+
+	parentDirIsNamespaceDir := nsdir != "" && nsdir == vfs.Base(p.Fs, dirpath)
+	fileExists, err := vfs.FileExists(p.Fs, filepath)
+	if err != nil {
+		return err
+	}
+
+	if fileExists {
+		err := p.Fs.Remove(filepath)
+		if err != nil {
+			return err
+		}
+	}
+	if parentDirExists && parentDirIsNamespaceDir {
+		// check if namespace dir is now empty
+		contents, err := vfs.ReadDir(p.Fs, dirpath)
+		if err != nil {
+			return err
+		}
+		if len(contents) == 0 {
+			// namespace dir is empty, remove it
+			err := p.Fs.RemoveAll(dirpath)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (p *FileSystemPersister) InternalPersister() persist.Persister {
@@ -211,4 +232,34 @@ func TryGetInternalFileSystemPersister(p persist.Persister) (*FileSystemPersiste
 	}
 	fsp, ok := curP.(*FileSystemPersister)
 	return fsp, ok
+}
+
+// ConvertToPersistence serializes the given resource into a byte array which can be stored in a filesystem persistence.
+// If the given Transformer is not nil, its 'Transform' method is called on the resource before, otherwise it is converted as-is.
+// This implementation basically calls yaml.Marshal on the object.
+func ConvertToPersistence(obj *unstructured.Unstructured, t persist.Transformer) ([]byte, error) {
+	if t != nil {
+		var err error
+		obj, err = t.Transform(obj)
+		if err != nil {
+			return nil, err
+		}
+
+	}
+	data, err := yaml.Marshal(obj)
+	if err != nil {
+		return nil, fmt.Errorf("error while marshalling object to yaml: %w", err)
+	}
+	return data, nil
+}
+
+// ConvertFromPersistence is the counterpart of ConvertToPersistence and converts a byte array back to a resource.
+// It basically calls yaml.Unmarshal on the given data.
+func ConvertFromPersistence(data []byte) (*unstructured.Unstructured, error) {
+	res := &unstructured.Unstructured{}
+	err := yaml.Unmarshal(data, res)
+	if err != nil {
+		return nil, fmt.Errorf("error while unmarshalling object from yaml: %w", err)
+	}
+	return res, nil
 }

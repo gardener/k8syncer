@@ -20,6 +20,7 @@ import (
 	"github.com/gardener/k8syncer/pkg/utils"
 	"github.com/gardener/k8syncer/pkg/utils/git"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -104,7 +105,7 @@ func (p *GitPersister) Exists(ctx context.Context, name, namespace string, gvk s
 	return exists, err
 }
 
-func (p *GitPersister) Get(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) ([]byte, error) {
+func (p *GitPersister) Get(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) (*unstructured.Unstructured, error) {
 	if p.expectChangesFromRemote {
 		err := p.repo.Pull(*p.injectedLogger)
 		if err != nil {
@@ -115,16 +116,33 @@ func (p *GitPersister) Get(ctx context.Context, name, namespace string, gvk sche
 	return data, err
 }
 
-func (p *GitPersister) PersistData(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, data []byte, subPath string) error {
-	err := p.Persister.PersistData(ctx, name, namespace, gvk, data, subPath)
+func (p *GitPersister) commitAndPush(resource *unstructured.Unstructured) error {
+	return p.repo.CommitAndPush(*p.injectedLogger, p.expectChangesFromRemote, fmt.Sprintf("update %s %s", utils.GVKToString(resource.GroupVersionKind(), true), getNamespacedName(resource.GetName(), resource.GetNamespace())))
+}
+
+func (p *GitPersister) Persist(ctx context.Context, resource *unstructured.Unstructured, t persist.Transformer, subPath string) (*unstructured.Unstructured, bool, error) {
+	if p.expectChangesFromRemote {
+		err := p.repo.Pull(*p.injectedLogger)
+		if err != nil {
+			return nil, false, err
+		}
+	}
+	persisted, changed, err := p.Persister.Persist(ctx, resource, t, subPath)
+	if err != nil {
+		return nil, false, err
+	}
+	if changed {
+		err = p.commitAndPush(persisted)
+	}
+	return persisted, changed, err
+}
+
+func (p *GitPersister) Delete(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) error {
+	err := p.Persister.Delete(ctx, name, namespace, gvk, subPath)
 	if err != nil {
 		return err
 	}
-	action := "update"
-	if data == nil {
-		action = "delete"
-	}
-	err = p.repo.CommitAndPush(*p.injectedLogger, p.expectChangesFromRemote, fmt.Sprintf("%s %s %s", action, utils.GVKToString(gvk, true), getNamespacedName(name, namespace)))
+	err = p.repo.CommitAndPush(*p.injectedLogger, p.expectChangesFromRemote, fmt.Sprintf("delete %s %s", utils.GVKToString(gvk, true), getNamespacedName(name, namespace)))
 	return err
 }
 

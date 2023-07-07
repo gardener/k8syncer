@@ -19,30 +19,31 @@ var Logging = struct {
 	CALL_PERSIST_DATA_FINISHED_MSG string
 	CALL_DELETE_FINISHED_MSG       string
 
-	KEY_ERROR                  string
-	KEY_DATA_EXISTS            string
-	KEY_RESOURCE_NAME          string
-	KEY_RESOURCE_NAMESPACE     string
-	KEY_RESOURCE_GROUP         string
-	KEY_RESOURCE_VERSION       string
-	KEY_RESOURCE_RESOURCE      string
-	KEY_RESOURCE_KIND          string
-	KEY_LOG_ID                 string
-	KEY_ERROR_OCCURRED         string
-	KEY_PERSIST_DATA_IS_DELETE string
-	KEY_RESOURCE_STORAGE       string
-	KEY_RESOURCE_STORAGE_ID    string
-	KEY_WATCHED_NAMESPACE      string
-	KEY_EVENT_TYPE             string
-	KEY_ID                     string
-	KEY_DATA                   string
-	KEY_PATH                   string
-	KEY_REQUEUE_AFTER          string
-	KEY_REQUEUE_COUNT          string
-	KEY_DUE_TIME               string
-	KEY_STATE_DISPLAY          string
-	KEY_STATE_VERBOSITY        string
-	KEY_CONFIGURED_STORAGES    string
+	KEY_ERROR                       string
+	KEY_DATA_EXISTS                 string
+	KEY_RESOURCE_NAME               string
+	KEY_RESOURCE_NAMESPACE          string
+	KEY_RESOURCE_GROUP              string
+	KEY_RESOURCE_VERSION            string
+	KEY_RESOURCE_RESOURCE           string
+	KEY_RESOURCE_KIND               string
+	KEY_LOG_ID                      string
+	KEY_ERROR_OCCURRED              string
+	KEY_PERSIST_DATA_IS_DELETE      string
+	KEY_RESOURCE_STORAGE            string
+	KEY_RESOURCE_STORAGE_ID         string
+	KEY_WATCHED_NAMESPACE           string
+	KEY_EVENT_TYPE                  string
+	KEY_ID                          string
+	KEY_DATA                        string
+	KEY_PATH                        string
+	KEY_REQUEUE_AFTER               string
+	KEY_REQUEUE_COUNT               string
+	KEY_DUE_TIME                    string
+	KEY_STATE_DISPLAY               string
+	KEY_STATE_VERBOSITY             string
+	KEY_CONFIGURED_STORAGES         string
+	KEY_RESOURCE_IN_STORAGE_CHANGED string
 }{
 	CALL_EXISTS_MSG:                "Call to Exists",
 	CALL_GET_MSG:                   "Call to Get",
@@ -55,30 +56,31 @@ var Logging = struct {
 	CALL_PERSIST_DATA_FINISHED_MSG: "PersistData returned",
 	CALL_DELETE_FINISHED_MSG:       "Delete returned",
 
-	KEY_ERROR:                  "error",
-	KEY_DATA_EXISTS:            "dataExists",
-	KEY_RESOURCE_NAME:          "name",
-	KEY_RESOURCE_NAMESPACE:     "namespace",
-	KEY_RESOURCE_GROUP:         "group",
-	KEY_RESOURCE_VERSION:       "version",
-	KEY_RESOURCE_RESOURCE:      "resource",
-	KEY_RESOURCE_KIND:          "kind",
-	KEY_LOG_ID:                 "logID",
-	KEY_ERROR_OCCURRED:         "errorOccurred",
-	KEY_PERSIST_DATA_IS_DELETE: "persistDataIsDelete",
-	KEY_RESOURCE_STORAGE:       "storage",
-	KEY_RESOURCE_STORAGE_ID:    "storageID",
-	KEY_WATCHED_NAMESPACE:      "watchedNamespace",
-	KEY_EVENT_TYPE:             "event",
-	KEY_ID:                     "id",
-	KEY_DATA:                   "data",
-	KEY_PATH:                   "path",
-	KEY_REQUEUE_AFTER:          "requeueAfter",
-	KEY_REQUEUE_COUNT:          "requeueCount",
-	KEY_DUE_TIME:               "dueTime",
-	KEY_STATE_DISPLAY:          "stateDisplay",
-	KEY_STATE_VERBOSITY:        "stateVerbosity",
-	KEY_CONFIGURED_STORAGES:    "configuredStorages",
+	KEY_ERROR:                       "error",
+	KEY_DATA_EXISTS:                 "dataExists",
+	KEY_RESOURCE_NAME:               "name",
+	KEY_RESOURCE_NAMESPACE:          "namespace",
+	KEY_RESOURCE_GROUP:              "group",
+	KEY_RESOURCE_VERSION:            "version",
+	KEY_RESOURCE_RESOURCE:           "resource",
+	KEY_RESOURCE_KIND:               "kind",
+	KEY_LOG_ID:                      "logID",
+	KEY_ERROR_OCCURRED:              "errorOccurred",
+	KEY_PERSIST_DATA_IS_DELETE:      "persistDataIsDelete",
+	KEY_RESOURCE_STORAGE:            "storage",
+	KEY_RESOURCE_STORAGE_ID:         "storageID",
+	KEY_WATCHED_NAMESPACE:           "watchedNamespace",
+	KEY_EVENT_TYPE:                  "event",
+	KEY_ID:                          "id",
+	KEY_DATA:                        "data",
+	KEY_PATH:                        "path",
+	KEY_REQUEUE_AFTER:               "requeueAfter",
+	KEY_REQUEUE_COUNT:               "requeueCount",
+	KEY_DUE_TIME:                    "dueTime",
+	KEY_STATE_DISPLAY:               "stateDisplay",
+	KEY_STATE_VERBOSITY:             "stateVerbosity",
+	KEY_CONFIGURED_STORAGES:         "configuredStorages",
+	KEY_RESOURCE_IN_STORAGE_CHANGED: "storageChanged",
 }
 
 type k8syncerContextKey string

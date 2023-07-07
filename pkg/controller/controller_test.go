@@ -107,22 +107,9 @@ var _ = Describe("Controller Tests", func() {
 
 		Expect(testenv.Client.Create(ctx, obj)).To(Succeed())
 
-		data, err := basicTransformer.TransformAndSerialize(obj)
-		Expect(err).ToNot(HaveOccurred())
-
 		By("persisting a new resource")
-		// fetch old data
-		mockPersister.ExpectCall(mockpersist.MockedGetCall(obj.GetName(), obj.GetNamespace(), obj.GroupVersionKind(), testStorageRef.SubPath))
-		// write new data
-		mockPersister.ExpectCall(mockpersist.MockedPersistDataCall(obj.GetName(), obj.GetNamespace(), obj.GroupVersionKind(), data, testStorageRef.SubPath))
-		_, err = ctrl.Reconcile(ctx, testutils.ReconcileRequestFromObject(obj))
-		Expect(err).ToNot(HaveOccurred())
-
-		By("reconciling an unchanged resource")
-		// fetch old data
-		mockPersister.ExpectCall(mockpersist.MockedGetCall(obj.GetName(), obj.GetNamespace(), obj.GroupVersionKind(), testStorageRef.SubPath))
-		// no write call since resource is unchanged
-		_, err = ctrl.Reconcile(ctx, testutils.ReconcileRequestFromObject(obj))
+		mockPersister.ExpectCall(mockpersist.MockedPersistCall(obj, basicTransformer, testStorageRef.SubPath))
+		_, err := ctrl.Reconcile(ctx, testutils.ReconcileRequestFromObject(obj))
 		Expect(err).ToNot(HaveOccurred())
 
 		By("should react on label changes")
@@ -131,12 +118,7 @@ var _ = Describe("Controller Tests", func() {
 			"foo.bar.baz": "foobar",
 		})
 		Expect(testenv.Client.Patch(ctx, obj, client.MergeFrom(old))).To(Succeed())
-		data, err = basicTransformer.TransformAndSerialize(obj)
-		Expect(err).ToNot(HaveOccurred())
-		// fetch old data
-		mockPersister.ExpectCall(mockpersist.MockedGetCall(obj.GetName(), obj.GetNamespace(), obj.GroupVersionKind(), testStorageRef.SubPath))
-		// write new data
-		mockPersister.ExpectCall(mockpersist.MockedPersistDataCall(obj.GetName(), obj.GetNamespace(), obj.GroupVersionKind(), data, testStorageRef.SubPath))
+		mockPersister.ExpectCall(mockpersist.MockedPersistCall(obj, basicTransformer, testStorageRef.SubPath))
 		_, err = ctrl.Reconcile(ctx, testutils.ReconcileRequestFromObject(obj))
 		Expect(err).ToNot(HaveOccurred())
 	})

@@ -5,7 +5,6 @@
 package mock
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"reflect"
@@ -22,9 +21,7 @@ type MockedCall struct {
 	name, namespace, subPath *string
 	gvk                      *schema.GroupVersionKind
 	resource                 *unstructured.Unstructured
-	rt                       persist.ResourceTransformer
-	data                     []byte
-	dataIsSet                bool
+	t                        persist.Transformer
 }
 
 var ErrNotInTestMode = errors.New("mock persister is not in test mode")
@@ -98,11 +95,10 @@ func (e *ErrUnexpectedCall) Error() string {
 type callName string
 
 const (
-	callName_Exists      = callName("Exists")
-	callName_Get         = callName("Get")
-	callName_Persist     = callName("Persist")
-	callName_PersistData = callName("PersistData")
-	callName_Delete      = callName("Delete")
+	callName_Exists  = callName("Exists")
+	callName_Get     = callName("Get")
+	callName_Persist = callName("Persist")
+	callName_Delete  = callName("Delete")
 )
 
 type callArgument string
@@ -183,12 +179,6 @@ func compareCalls(expected, actual *MockedCall) error {
 	if !reflect.DeepEqual(expected.resource, actual.resource) {
 		diffs[callArgument_resource] = compareDifference{expected: expected.resource, actual: actual.resource}
 	}
-	if !reflect.DeepEqual(expected.rt, actual.rt) {
-		diffs[callArgument_transformer] = compareDifference{expected: expected.rt, actual: actual.rt}
-	}
-	if expected.dataIsSet != actual.dataIsSet || !bytes.Equal(expected.data, actual.data) {
-		diffs[callArgument_data] = compareDifference{expected: string(expected.data), actual: string(actual.data)}
-	}
 	if len(diffs) > 0 {
 		return newUnexpectedCallError(false, diffs)
 	}
@@ -216,14 +206,21 @@ func MockedGetCall(name, namespace string, gvk schema.GroupVersionKind, subPath 
 	}
 }
 
-func MockedPersistDataCall(name, namespace string, gvk schema.GroupVersionKind, data []byte, subPath string) *MockedCall {
+func MockedPersistCall(resource *unstructured.Unstructured, t persist.Transformer, subPath string) *MockedCall {
 	return &MockedCall{
-		callType:  callName_PersistData,
+		callType: callName_Persist,
+		resource: resource,
+		t:        t,
+		subPath:  &subPath,
+	}
+}
+
+func MockedDeleteCall(name, namespace string, gvk schema.GroupVersionKind, subPath string) *MockedCall {
+	return &MockedCall{
+		callType:  callName_Persist,
 		name:      &name,
 		namespace: &namespace,
 		gvk:       &gvk,
-		data:      data,
-		dataIsSet: true,
 		subPath:   &subPath,
 	}
 }

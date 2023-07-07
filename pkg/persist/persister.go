@@ -19,21 +19,22 @@ type Persister interface {
 	Exists(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) (bool, error)
 	// Get returns the currently persisted data for the specified resource.
 	// If no data for the resource exists, it is expected to return (nil, nil) and not an error.
-	Get(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) ([]byte, error)
-	// PersistData persists the specified resource, or removes it from persistence if data is nil.
-	// Calling it with nil data on a resource which doesn't exist in persistence must not return an error.
-	PersistData(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, data []byte, subPath string) error
+	Get(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) (*unstructured.Unstructured, error)
+	// Persist persists the given resource.
+	// Depending on the implementation, it might check for its existence in the storage first and only update it if it differs.
+	// It returns the transformed version of the given resource, which should be the one that is persisted after this command.
+	// The second return value is 'true' if the resource in the storage has changed (meaning the given resource differed from the one in the storage when this method was called).
+	Persist(ctx context.Context, resource *unstructured.Unstructured, t Transformer, subPath string) (*unstructured.Unstructured, bool, error)
+	// Delete deletes the resource from persistence.
+	// If the resource does not exist, Delete will not return an error.
+	Delete(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) error
 	// InternalPersister returns the internal persister, if the current implementation wraps another implementation.
 	// Otherwise, nil is returned.
 	InternalPersister() Persister
 }
 
-// ResourceTransformer transforms a given k8s resource to prepare it for being persisted (usually by removing undesired fields).
-type ResourceTransformer interface {
-	// Transform prepares the resource for being persisted.
-	// Usually, this means removing fields which should not be persisted, but it is also possible to reduce the resource to a value of a single field or something similar.
-	Transform(*unstructured.Unstructured) (interface{}, error)
-	// TransformAndSerialize is expected to first call Transform and then serialize the result into something which can be persisted.
-	// For k8s resources, marshalling into JSON or YAML would be the obvious way, but it is not limited to this.
-	TransformAndSerialize(*unstructured.Unstructured) ([]byte, error)
+// Transformer transforms between unstructured.Unstructured and the storage.
+type Transformer interface {
+	// Transform prepares the resource for persistence by removing (volatile) fields which should not be persisted.
+	Transform(*unstructured.Unstructured) (*unstructured.Unstructured, error)
 }
