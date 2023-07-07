@@ -66,13 +66,6 @@ func (cfg *K8SyncerConfiguration) Complete() error {
 			if sd.MockConfig == nil {
 				sd.MockConfig = &MockConfiguration{}
 			}
-			// default filesystemconfig
-			if sd.FileSystemConfig == nil {
-				sd.FileSystemConfig = &FileSystemConfiguration{}
-			}
-			if sd.FileSystemConfig.RootPath == "" {
-				sd.FileSystemConfig.RootPath = "/data"
-			}
 		}
 	}
 	return nil

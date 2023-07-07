@@ -42,9 +42,7 @@ var _ = Describe("Controller Tests", func() {
 	)
 
 	BeforeEach(func() {
-		pers, err := mockpersist.New(nil, &config.FileSystemConfiguration{
-			RootPath: "/data",
-		}, true)
+		pers, err := mockpersist.New(nil, true)
 		Expect(err).ToNot(HaveOccurred())
 
 		// mockpersist.New returns a log-wrapped persister, but we need the MockPersister-specific methods, so we have to 'unpack' it again
@@ -107,18 +105,33 @@ var _ = Describe("Controller Tests", func() {
 
 		Expect(testenv.Client.Create(ctx, obj)).To(Succeed())
 
-		By("persisting a new resource")
-		mockPersister.ExpectCall(mockpersist.MockedPersistCall(obj, basicTransformer, testStorageRef.SubPath))
-		_, err := ctrl.Reconcile(ctx, testutils.ReconcileRequestFromObject(obj))
+		if *ctrl.SyncConfig.Finalize {
+			// reconcile will add the finalizer and the mocked call comparison will throw an error if we don't add it here too
+			utils.AddFinalizer(obj)
+		}
+
+		transformed, err := basicTransformer.Transform(obj)
 		Expect(err).ToNot(HaveOccurred())
 
-		By("should react on label changes")
+		By("persisting a new resource")
+		mockPersister.ExpectCall(mockpersist.MockedPersistCall(obj, basicTransformer, testStorageRef.SubPath), mockpersist.MockedPersistReturn(transformed, true, nil))
+		_, err = ctrl.Reconcile(ctx, testutils.ReconcileRequestFromObject(obj))
+		Expect(err).ToNot(HaveOccurred())
+
+		By("should notice unchanged resources")
+		mockPersister.ExpectCall(mockpersist.MockedPersistCall(obj, basicTransformer, testStorageRef.SubPath), mockpersist.MockedPersistReturn(transformed, false, nil))
+		_, err = ctrl.Reconcile(ctx, testutils.ReconcileRequestFromObject(obj))
+		Expect(err).ToNot(HaveOccurred())
+
+		By("should update resource on label changes")
 		old := obj.DeepCopy()
 		obj.SetLabels(map[string]string{
 			"foo.bar.baz": "foobar",
 		})
 		Expect(testenv.Client.Patch(ctx, obj, client.MergeFrom(old))).To(Succeed())
-		mockPersister.ExpectCall(mockpersist.MockedPersistCall(obj, basicTransformer, testStorageRef.SubPath))
+		transformed, err = basicTransformer.Transform(obj)
+		Expect(err).ToNot(HaveOccurred())
+		mockPersister.ExpectCall(mockpersist.MockedPersistCall(obj, basicTransformer, testStorageRef.SubPath), mockpersist.MockedPersistReturn(transformed, true, nil))
 		_, err = ctrl.Reconcile(ctx, testutils.ReconcileRequestFromObject(obj))
 		Expect(err).ToNot(HaveOccurred())
 	})

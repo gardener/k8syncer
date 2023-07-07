@@ -22,6 +22,13 @@ type MockedCall struct {
 	gvk                      *schema.GroupVersionKind
 	resource                 *unstructured.Unstructured
 	t                        persist.Transformer
+	expectedReturn           *MockedReturn
+}
+
+type MockedReturn struct {
+	resource        *unstructured.Unstructured
+	existsOrChanged *bool
+	err             error
 }
 
 var ErrNotInTestMode = errors.New("mock persister is not in test mode")
@@ -92,6 +99,31 @@ func (e *ErrUnexpectedCall) Error() string {
 	return sb.String()
 }
 
+type ErrUnexpectedReturn struct {
+	onlyOneNil, resourceDiffers, boolDiffers, errDiffers bool
+	expectedResource, actualResource                     *unstructured.Unstructured
+	expectedBool, actualBool                             bool
+	expectedErr, actualErr                               error
+}
+
+func (e *ErrUnexpectedReturn) Error() string {
+	if e.onlyOneNil {
+		return "only one of two compared return values is nil"
+	}
+	sb := strings.Builder{}
+	sb.WriteString("the following return values differ from the expected ones:")
+	if e.resourceDiffers {
+		sb.WriteString(fmt.Sprintf("\n  returned resource:\n    expected: %v\n    actual: %v", e.expectedResource.Object, e.actualResource.Object))
+	}
+	if e.boolDiffers {
+		sb.WriteString(fmt.Sprintf("\n  returned changed/exist:\n    expected: %v\n    actual: %v", e.expectedBool, e.actualBool))
+	}
+	if e.errDiffers {
+		sb.WriteString(fmt.Sprintf("\n  returned error:\n    expected: %v\n    actual: %v", e.expectedErr, e.actualErr))
+	}
+	return sb.String()
+}
+
 type callName string
 
 const (
@@ -117,7 +149,10 @@ type compareDifference struct {
 	expected, actual interface{}
 }
 
-func (p *MockPersister) ExpectCall(expected *MockedCall) {
+func (p *MockPersister) ExpectCall(expected *MockedCall, expectedReturn *MockedReturn) {
+	if expectedReturn != nil {
+		expected.expectedReturn = expectedReturn
+	}
 	p.expectedCalls.Push(expected)
 }
 
@@ -176,6 +211,14 @@ func compareCalls(expected, actual *MockedCall) error {
 	if !reflect.DeepEqual(expected.gvk, actual.gvk) {
 		diffs[callArgument_gvk] = compareDifference{expected: expected.gvk, actual: actual.gvk}
 	}
+	if expected.resource != nil && actual.resource != nil {
+		expectedResourceVersion, expFound, expErr := unstructured.NestedString(expected.resource.UnstructuredContent(), "metadata", "resourceVersion")
+		actualResourceVersion, actFound, actErr := unstructured.NestedString(actual.resource.UnstructuredContent(), "metadata", "resourceVersion")
+		if expErr == nil && actErr == nil && expFound && actFound && expectedResourceVersion != actualResourceVersion {
+			// set expected's resource version to actual's, as it doesn't matter for the comparison, but might cause problems (setting the finalizer increases the resource version)
+			unstructured.SetNestedField(expected.resource.Object, actualResourceVersion, "metadata", "resourceVersion")
+		}
+	}
 	if !reflect.DeepEqual(expected.resource, actual.resource) {
 		diffs[callArgument_resource] = compareDifference{expected: expected.resource, actual: actual.resource}
 	}
@@ -186,13 +229,60 @@ func compareCalls(expected, actual *MockedCall) error {
 	return nil
 }
 
-func MockedExistCall(name, namespace string, gvk schema.GroupVersionKind, subPath string) *MockedCall {
+// compareReturns compares the expected to the actual return value of a call and returns an error if they differ
+func compareReturns(expected, actual *MockedReturn) error {
+	err := &ErrUnexpectedReturn{}
+	errOccurred := false
+	if expected == nil {
+		if actual == nil {
+			return nil
+		}
+		err.onlyOneNil = true
+		return err
+	}
+	if actual == nil {
+		err.onlyOneNil = true
+		return err
+	}
+
+	if !reflect.DeepEqual(expected.resource, actual.resource) {
+		errOccurred = true
+		err.resourceDiffers = true
+		err.expectedResource = expected.resource
+		err.actualResource = actual.resource
+	}
+	if !reflect.DeepEqual(expected.existsOrChanged, actual.existsOrChanged) {
+		errOccurred = true
+		err.boolDiffers = true
+		err.expectedBool = *expected.existsOrChanged
+		err.actualBool = *actual.existsOrChanged
+	}
+	if expected.err != actual.err {
+		errOccurred = true
+		err.errDiffers = true
+		err.expectedErr = expected.err
+		err.actualErr = actual.err
+	}
+	if errOccurred {
+		return err
+	}
+	return nil
+}
+
+func MockedExistsCall(name, namespace string, gvk schema.GroupVersionKind, subPath string) *MockedCall {
 	return &MockedCall{
 		callType:  callName_Exists,
 		name:      &name,
 		namespace: &namespace,
 		gvk:       &gvk,
 		subPath:   &subPath,
+	}
+}
+
+func MockedExistsReturn(exists bool, err error) *MockedReturn {
+	return &MockedReturn{
+		existsOrChanged: &exists,
+		err:             err,
 	}
 }
 
@@ -206,12 +296,27 @@ func MockedGetCall(name, namespace string, gvk schema.GroupVersionKind, subPath 
 	}
 }
 
+func MockedGetReturn(resource *unstructured.Unstructured, err error) *MockedReturn {
+	return &MockedReturn{
+		resource: resource,
+		err:      err,
+	}
+}
+
 func MockedPersistCall(resource *unstructured.Unstructured, t persist.Transformer, subPath string) *MockedCall {
 	return &MockedCall{
 		callType: callName_Persist,
 		resource: resource,
 		t:        t,
 		subPath:  &subPath,
+	}
+}
+
+func MockedPersistReturn(resource *unstructured.Unstructured, changed bool, err error) *MockedReturn {
+	return &MockedReturn{
+		resource:        resource,
+		existsOrChanged: &changed,
+		err:             err,
 	}
 }
 
@@ -222,5 +327,11 @@ func MockedDeleteCall(name, namespace string, gvk schema.GroupVersionKind, subPa
 		namespace: &namespace,
 		gvk:       &gvk,
 		subPath:   &subPath,
+	}
+}
+
+func MockedDeleteReturn(err error) *MockedReturn {
+	return &MockedReturn{
+		err: err,
 	}
 }
