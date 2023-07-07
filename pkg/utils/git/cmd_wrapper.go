@@ -375,3 +375,57 @@ func (r *GitRepo) IsInitialized() bool {
 func refspecFromBranch(branch string) gitcfg.RefSpec {
 	return gitcfg.RefSpec(fmt.Sprintf("refs/heads/%s:refs/heads/%s", branch, branch))
 }
+
+// DummyRemote is a helper struct to spin up a local git repository which can be used as remote for integration testing.
+type DummyRemote struct {
+	RootPath string
+	Branch   string
+	Fs       vfs.FileSystem
+	GitFs    vfs.FileSystem
+	Repo     *git.Repository
+	isClosed bool
+}
+
+func NewDummyRemote(fs vfs.FileSystem, branch string) (*DummyRemote, error) {
+	res := &DummyRemote{
+		Fs:       fs,
+		Branch:   branch,
+		isClosed: false,
+	}
+	var err error
+	res.RootPath, err = vfs.TempDir(res.Fs, "", "remote-")
+	if err != nil {
+		return nil, fmt.Errorf("unable to create temporary directory for git remote: %w", err)
+	}
+
+	res.GitFs, err = projectionfs.New(res.Fs, res.RootPath)
+	if err != nil {
+		return nil, fmt.Errorf("error creating projection filesystem: %w", err)
+	}
+
+	res.Repo, err = git.InitWithOptions(gitfs.NewStorage(FSWrap(res.GitFs), gitcache.NewObjectLRUDefault()), nil, git.InitOptions{
+		DefaultBranch: plumbing.NewBranchReferenceName(res.Branch),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error during 'git init': %w", err)
+	}
+
+	return res, nil
+}
+
+// Close deletes the directory containing the remote.
+func (dr *DummyRemote) Close() error {
+	if dr.isClosed {
+		return fmt.Errorf("remote is already closed")
+	}
+	if err := dr.Fs.RemoveAll(dr.RootPath); err != nil {
+		return err
+	}
+	dr.Repo = nil
+	if err := vfs.Cleanup(dr.GitFs); err != nil {
+		return err
+	}
+	dr.GitFs = nil
+	dr.isClosed = true
+	return nil
+}
