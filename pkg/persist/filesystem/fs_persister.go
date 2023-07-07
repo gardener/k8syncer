@@ -35,8 +35,8 @@ type FileSystemPersister struct {
 	Fs vfs.FileSystem
 	// NamespacePrefix is used to prefix the names for the namespace folders.
 	NamespacePrefix string
-	// GVRNameSeparator is uses as a separator in the filename between the resource's gvr and its name.
-	GVRNameSeparator string
+	// GVKNameSeparator is uses as a separator in the filename between the resource's gvk and its name.
+	GVKNameSeparator string
 	// FileExtension is the extension used for the files.
 	FileExtension string
 	// RootPath is used as a root path.
@@ -70,7 +70,7 @@ func New(fs vfs.FileSystem, cfg *config.FileSystemConfiguration, createRootPath 
 	fsp := &FileSystemPersister{
 		Fs:               fs,
 		NamespacePrefix:  "ns_",
-		GVRNameSeparator: "_",
+		GVKNameSeparator: "_",
 		FileExtension:    "yaml",
 		RootPath:         cfg.RootPath,
 	}
@@ -79,7 +79,7 @@ func New(fs vfs.FileSystem, cfg *config.FileSystemConfiguration, createRootPath 
 		fsp.NamespacePrefix = *cfg.NamespacePrefix
 	}
 	if cfg.GVKNameSeparator != nil {
-		fsp.GVRNameSeparator = *cfg.GVKNameSeparator
+		fsp.GVKNameSeparator = *cfg.GVKNameSeparator
 	}
 	if cfg.FileExtension != nil {
 		fsp.FileExtension = *cfg.FileExtension
@@ -212,12 +212,12 @@ func (p *FileSystemPersister) GetResourceFilepath(name, namespace string, gvk sc
 	if namespace != "" {
 		prefixedNamespace = fmt.Sprintf("%s%s", p.NamespacePrefix, namespace)
 	}
-	prefixedFileExtension := ""
+	prefixedFileExtension := p.FileExtension
 	if p.FileExtension != "" && !strings.HasPrefix(p.FileExtension, ".") {
 		prefixedFileExtension = fmt.Sprintf(".%s", p.FileExtension)
 	}
 	gvkString := utils.GVKToString(gvk, true)
-	filename := fmt.Sprintf("%s%s%s%s", gvkString, p.GVRNameSeparator, name, prefixedFileExtension)
+	filename := fmt.Sprintf("%s%s%s%s", gvkString, p.GVKNameSeparator, name, prefixedFileExtension)
 	filepath := vfs.Join(p.Fs, p.RootPath, subPath, prefixedNamespace, filename)
 	p.injectedLogger.Debug("Computed resource filepath", constants.Logging.KEY_PATH, filepath)
 	return filepath, prefixedNamespace
