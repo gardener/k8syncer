@@ -10,10 +10,11 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/gardener/k8syncer/pkg/persist"
-	"github.com/gardener/k8syncer/pkg/utils"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/gardener/k8syncer/pkg/persist"
+	"github.com/gardener/k8syncer/pkg/utils"
 )
 
 type MockedCall struct {
@@ -216,7 +217,7 @@ func compareCalls(expected, actual *MockedCall) error {
 		actualResourceVersion, actFound, actErr := unstructured.NestedString(actual.resource.UnstructuredContent(), "metadata", "resourceVersion")
 		if expErr == nil && actErr == nil && expFound && actFound && expectedResourceVersion != actualResourceVersion {
 			// set expected's resource version to actual's, as it doesn't matter for the comparison, but might cause problems (setting the finalizer increases the resource version)
-			unstructured.SetNestedField(expected.resource.Object, actualResourceVersion, "metadata", "resourceVersion")
+			unstructured.SetNestedField(expected.resource.Object, actualResourceVersion, "metadata", "resourceVersion") //nolint:errcheck
 		}
 	}
 	if !reflect.DeepEqual(expected.resource, actual.resource) {

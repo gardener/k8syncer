@@ -154,6 +154,9 @@ func (p *FileSystemPersister) Persist(ctx context.Context, resource *unstructure
 		return nil, false, err
 	}
 	newData, err := ConvertToPersistence(transformed, nil)
+	if err != nil {
+		return nil, false, err
+	}
 	if bytes.Equal(newData, existingData) {
 		return transformed, false, nil
 	}

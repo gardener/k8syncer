@@ -7,10 +7,6 @@ package controller
 import (
 	"context"
 
-	"github.com/gardener/k8syncer/pkg/config"
-	mockpersist "github.com/gardener/k8syncer/pkg/persist/mock"
-	"github.com/gardener/k8syncer/pkg/utils"
-	testutils "github.com/gardener/k8syncer/test/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -18,6 +14,11 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/k8syncer/pkg/config"
+	mockpersist "github.com/gardener/k8syncer/pkg/persist/mock"
+	"github.com/gardener/k8syncer/pkg/utils"
+	testutils "github.com/gardener/k8syncer/test/utils"
 )
 
 var (
