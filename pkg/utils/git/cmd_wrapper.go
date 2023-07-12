@@ -27,6 +27,7 @@ const defaultRemoteName = "origin"
 var ErrNotInitialized = fmt.Errorf("git repo is not initialized, call repo.Initialize first")
 
 // GitRepo is a helper struct which abstracts from the git commands.
+// Use NewRepo to instantiate this struct.
 type GitRepo struct {
 	// URL is the git repo URL.
 	URL string
@@ -44,6 +45,9 @@ type GitRepo struct {
 	lock               *sync.Mutex
 }
 
+// NewRepo creates a new GitRepo instance, which can be used to interact with a git repository.
+// Note that this only initializes the struct, in order to perform any git actions on the repository, Initialize has to be called first.
+// The GitRepo uses a projection filesystem projecting to the given localPath. This means that all operations on the returned GitRepo's filesystem have to treat the repository directory as root.
 func NewRepo(baseFs vfs.FileSystem, url, branch, localPath string, auth transport.AuthMethod) (*GitRepo, error) {
 	fs, err := projectionfs.New(baseFs, localPath)
 	if err != nil {
@@ -167,7 +171,9 @@ func (r *GitRepo) gitInit() error {
 		return fmt.Errorf("error creating projection filesystem: %w", err)
 	}
 
-	r.repo, err = git.Init(gitfs.NewStorage(FSWrap(fsGitDir), gitcache.NewObjectLRUDefault()), FSWrap(r.Fs))
+	r.repo, err = git.InitWithOptions(gitfs.NewStorage(FSWrap(fsGitDir), gitcache.NewObjectLRUDefault()), FSWrap(r.Fs), git.InitOptions{
+		DefaultBranch: plumbing.NewBranchReferenceName(r.Branch),
+	})
 	if err != nil {
 		return fmt.Errorf("error during 'git init': %w", err)
 	}
@@ -191,24 +197,6 @@ func (r *GitRepo) gitClone() error {
 	}
 
 	return r.gitOpen()
-
-	// repo, err := git.Clone(gitfs.NewStorage(FSWrap(fsGitDir), gitcache.NewObjectLRUDefault()), FSWrap(r.Fs), &git.CloneOptions{
-	// 	URL:           r.URL,
-	// 	Auth:          r.Auth,
-	// 	SingleBranch:  true,
-	// 	ReferenceName: plumbing.NewBranchReferenceName(r.Branch),
-	// })
-	// if err != nil {
-	// 	return fmt.Errorf("error during 'git clone': %w", err)
-	// }
-
-	// err = r.gitPull(true)
-	// if err != nil {
-	// 	r.repo = nil
-	// 	return err
-	// }
-
-	// return nil
 }
 
 func (r *GitRepo) gitCommit(msg string, paths ...string) (bool, error) {
@@ -300,7 +288,8 @@ func (r *GitRepo) gitPull(force bool) error {
 	// ignore errors which come from
 	// 1. the checked-out repo already being up-to-date
 	// 2. the branch not being found upstream (this can happen if it was created locally)
-	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) && !errors.Is(err, plumbing.ErrReferenceNotFound) {
+	// 3. the repository being empty
+	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) && !errors.Is(err, plumbing.ErrReferenceNotFound) && !errors.Is(err, git.NoMatchingRefSpecError{}) && !errors.Is(err, transport.ErrEmptyRemoteRepository) {
 		return fmt.Errorf("error during 'git pull': %w", err)
 	}
 
@@ -341,25 +330,53 @@ func (r *GitRepo) gitCheckout() error {
 		return fmt.Errorf("error getting worktree: %w", err)
 	}
 
-	createBranch := false
+	branchRef := plumbing.NewBranchReferenceName(r.Branch)
 	// try to fetch branch from remote
 	err = r.repo.Fetch(&git.FetchOptions{
 		RemoteName: defaultRemoteName,
 		RefSpecs:   []gitcfg.RefSpec{refspecFromBranch(r.Branch)},
 		Auth:       r.Auth,
 	})
-	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
-		if !errors.Is(err, git.NoMatchingRefSpecError{}) {
-			return fmt.Errorf("error during 'git fetch': %s", err)
+	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) && !errors.Is(err, git.NoMatchingRefSpecError{}) && !errors.Is(err, transport.ErrEmptyRemoteRepository) {
+		return fmt.Errorf("error during 'git fetch': %s", err)
+	}
+
+	// evaluate whether branch exists
+	_, err = r.repo.Storer.Reference(branchRef)
+	branchExists := err == nil
+
+	hash := plumbing.ZeroHash
+	if !branchExists {
+		// branch has to be created
+		// check if there is a commit hash for HEAD
+		_, err := r.repo.Head()
+		if err != nil {
+			// go-git currently cannot create new branches on 'empty' repositories (no head commit in current branch), see
+			// https://github.com/go-git/go-git/issues/481
+			// https://github.com/go-git/go-git/issues/587
+			// this is a workaround which creates an empty dummy commit in order to have a hash to create the branch from
+			hash, err = w.Commit("dummy initial commit", &git.CommitOptions{
+				AllowEmptyCommits: true,
+			})
+			if err != nil {
+				return fmt.Errorf("error creating dummy initial commit: %w", err)
+			}
+
+			// re-evaluate branch existence, as the commit could have created the branch
+			_, err = r.repo.Storer.Reference(branchRef)
+			branchExists = err == nil
+			if branchExists {
+				// if the 'Create' option is false, 'Branch' and 'Hash' both specify what to checkout and are mutually exclusive
+				hash = plumbing.ZeroHash
+			}
 		}
-		// create branch if it doesn't exist upstream
-		createBranch = true
 	}
 
 	err = w.Checkout(&git.CheckoutOptions{
-		Branch: plumbing.NewBranchReferenceName(r.Branch),
+		Branch: branchRef,
 		Force:  true,
-		Create: createBranch,
+		Create: !branchExists,
+		Hash:   hash,
 	})
 	if err != nil {
 		return fmt.Errorf("error during 'git checkout': %s", err)
@@ -411,6 +428,27 @@ func NewDummyRemote(fs vfs.FileSystem, branch string) (*DummyRemote, error) {
 	}
 
 	return res, nil
+}
+
+// NewRepo returns a new GitRepo configured for the dummy remote.
+// The repository uses a temporary directory on the remote's filesystem and is already initialized.
+func (dr *DummyRemote) NewRepo() (*GitRepo, error) {
+	tmpdir, err := vfs.TempDir(dr.Fs, "", "repo-")
+	if err != nil {
+		return nil, err
+	}
+
+	repo, err := NewRepo(dr.Fs, dr.RootPath, dr.Branch, tmpdir, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	err = repo.Initialize(logging.Discard())
+	if err != nil {
+		return nil, err
+	}
+
+	return repo, nil
 }
 
 // Close deletes the directory containing the remote.
