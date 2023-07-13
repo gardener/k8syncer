@@ -81,7 +81,7 @@ var _ = Describe("Filesystem Persister Tests", func() {
 
 		Expect(persisted).To(Equal(transformed))
 
-		dummyFile, _ := fsp.GetResourceFilepath(dummy.GetName(), dummy.GetNamespace(), dummy.GroupVersionKind(), subPath)
+		dummyFile, _ := fsp.GetResourceFilepath(dummy.GetName(), dummy.GetNamespace(), dummy.GroupVersionKind(), subPath, true)
 
 		storedRaw, err := vfs.ReadFile(fs, dummyFile)
 		Expect(err).ToNot(HaveOccurred())
@@ -159,23 +159,29 @@ var _ = Describe("Filesystem Persister Tests", func() {
 		gvk := dummy.GroupVersionKind()
 
 		By("default values, namespaced resource, empty subPath")
-		file, dir := fsp.GetResourceFilepath(name, namespace, gvk, subPath)
+		file, dir := fsp.GetResourceFilepath(name, namespace, gvk, subPath, true)
 		Expect(dir).To(Equal(fmt.Sprintf("%s%s", *cfg.NamespacePrefix, namespace)))
 		Expect(file).To(Equal(vfs.Join(fs, cfg.RootPath, subPath, dir, fmt.Sprintf("%s%s%s.%s", utils.GVKToString(gvk, true), *cfg.GVKNameSeparator, name, *cfg.FileExtension))))
 
 		By("default values, non-namespaced, empty subPath")
-		file, dir = fsp.GetResourceFilepath(name, "", gvk, subPath)
+		file, dir = fsp.GetResourceFilepath(name, "", gvk, subPath, true)
 		Expect(dir).To(BeEmpty())
 		Expect(vfs.Dir(fs, file)).To(Equal(vfs.Join(fs, cfg.RootPath, subPath)))
 
 		By("default values, namespaced resource, non-empty subPath")
 		subPath = "subPath"
-		file, dir = fsp.GetResourceFilepath(name, namespace, gvk, subPath)
+		file, dir = fsp.GetResourceFilepath(name, namespace, gvk, subPath, true)
 		Expect(dir).To(Equal(fmt.Sprintf("%s%s", *cfg.NamespacePrefix, namespace)))
 		Expect(vfs.Dir(fs, file)).To(Equal(vfs.Join(fs, cfg.RootPath, subPath, dir)))
 
+		By("default values, namespaced resource, non-empty subPath, without root path")
+		subPath = "subPath"
+		file, dir = fsp.GetResourceFilepath(name, namespace, gvk, subPath, false)
+		Expect(dir).To(Equal(fmt.Sprintf("%s%s", *cfg.NamespacePrefix, namespace)))
+		Expect(vfs.Dir(fs, file)).To(Equal(vfs.Join(fs, subPath, dir)))
+
 		By("default values, non-namespaced, non-empty subPath")
-		file, dir = fsp.GetResourceFilepath(name, "", gvk, subPath)
+		file, dir = fsp.GetResourceFilepath(name, "", gvk, subPath, true)
 		Expect(dir).To(BeEmpty())
 		Expect(file).To(Equal(vfs.Join(fs, cfg.RootPath, subPath, fmt.Sprintf("%s%s%s.%s", utils.GVKToString(gvk, true), *cfg.GVKNameSeparator, name, *cfg.FileExtension))))
 
@@ -188,7 +194,7 @@ var _ = Describe("Filesystem Persister Tests", func() {
 			InMemory:         utils.Ptr(true),
 		}, true)
 		Expect(err).ToNot(HaveOccurred())
-		file, dir = fsp.GetResourceFilepath(name, namespace, gvk, subPath)
+		file, dir = fsp.GetResourceFilepath(name, namespace, gvk, subPath, true)
 		Expect(dir).To(Equal(fmt.Sprintf("&%s", namespace)))
 		Expect(file).To(Equal(fmt.Sprintf("/my/root/path/%s/&%s/%s#%s.txt", subPath, namespace, utils.GVKToString(gvk, true), name)))
 	})

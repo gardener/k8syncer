@@ -146,6 +146,10 @@ func (p *GitPersister) Delete(ctx context.Context, name, namespace string, gvk s
 	return err
 }
 
+func (p *GitPersister) InternalPersister() persist.Persister {
+	return p.Persister
+}
+
 func prepareFilesystem(fs vfs.FileSystem, rootPath, gitRepoName string) error {
 	if gitRepoName == "" {
 		return fmt.Errorf("gitRepoPath must not be empty")

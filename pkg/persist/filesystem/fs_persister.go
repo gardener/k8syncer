@@ -101,7 +101,7 @@ func NewForMemory(cfg *config.FileSystemConfiguration) (*FileSystemPersister, er
 }
 
 func (p *FileSystemPersister) Exists(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) (bool, error) {
-	filepath, _ := p.GetResourceFilepath(name, namespace, gvk, subPath)
+	filepath, _ := p.GetResourceFilepath(name, namespace, gvk, subPath, true)
 	return vfs.FileExists(p.Fs, filepath)
 }
 
@@ -117,7 +117,7 @@ func (p *FileSystemPersister) getRaw(ctx context.Context, filepath string) ([]by
 }
 
 func (p *FileSystemPersister) Get(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) (*unstructured.Unstructured, error) {
-	filepath, _ := p.GetResourceFilepath(name, namespace, gvk, subPath)
+	filepath, _ := p.GetResourceFilepath(name, namespace, gvk, subPath, true)
 	data, err := p.getRaw(ctx, filepath)
 	if err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ func (p *FileSystemPersister) persistRaw(ctx context.Context, data []byte, filep
 }
 
 func (p *FileSystemPersister) Persist(ctx context.Context, resource *unstructured.Unstructured, t persist.Transformer, subPath string) (*unstructured.Unstructured, bool, error) {
-	filepath, _ := p.GetResourceFilepath(resource.GetName(), resource.GetNamespace(), resource.GroupVersionKind(), subPath)
+	filepath, _ := p.GetResourceFilepath(resource.GetName(), resource.GetNamespace(), resource.GroupVersionKind(), subPath, true)
 	existingData, err := p.getRaw(ctx, filepath)
 	if err != nil {
 		return nil, false, err
@@ -165,7 +165,7 @@ func (p *FileSystemPersister) Persist(ctx context.Context, resource *unstructure
 }
 
 func (p *FileSystemPersister) Delete(ctx context.Context, name, namespace string, gvk schema.GroupVersionKind, subPath string) error {
-	filepath, nsdir := p.GetResourceFilepath(name, namespace, gvk, subPath)
+	filepath, nsdir := p.GetResourceFilepath(name, namespace, gvk, subPath, true)
 	dirpath := vfs.Dir(p.Fs, filepath)
 	parentDirExists, err := vfs.DirExists(p.Fs, dirpath)
 	if err != nil {
@@ -207,7 +207,8 @@ func (p *FileSystemPersister) InternalPersister() persist.Persister {
 
 // GetResourceFilepath returns the filepath under which the specified resource is stored and the namespace dir, if any.
 // The returned namespace dir is already part of the path returned as first argument.
-func (p *FileSystemPersister) GetResourceFilepath(name, namespace string, gvk schema.GroupVersionKind, subPath string) (string, string) {
+// If includeRootPath is false, the returned path is relative to the directory at p.RootPath. Otherwise, p.RootPath is contained in the returned path.
+func (p *FileSystemPersister) GetResourceFilepath(name, namespace string, gvk schema.GroupVersionKind, subPath string, includeRootPath bool) (string, string) {
 	prefixedNamespace := ""
 	if namespace != "" {
 		prefixedNamespace = fmt.Sprintf("%s%s", p.NamespacePrefix, namespace)
@@ -218,7 +219,10 @@ func (p *FileSystemPersister) GetResourceFilepath(name, namespace string, gvk sc
 	}
 	gvkString := utils.GVKToString(gvk, true)
 	filename := fmt.Sprintf("%s%s%s%s", gvkString, p.GVKNameSeparator, name, prefixedFileExtension)
-	filepath := vfs.Join(p.Fs, p.RootPath, subPath, prefixedNamespace, filename)
+	filepath := vfs.Join(p.Fs, subPath, prefixedNamespace, filename)
+	if includeRootPath {
+		filepath = vfs.Join(p.Fs, p.RootPath, filepath)
+	}
 	p.injectedLogger.Debug("Computed resource filepath", constants.Logging.KEY_PATH, filepath)
 	return filepath, prefixedNamespace
 }
