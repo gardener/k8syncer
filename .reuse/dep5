@@ -3,6 +3,26 @@ Upstream-Name: k8syncer
 Upstream-Contact: The Gardener project <gardener@googlegroups.com>
 Source: https://github.com/gardener/k8syncer
 
+# --------------------------------------------------
+# source code
+
+Files: '*'
+Copyright: 2023 SAP SE or an SAP affiliate company and Gardener contributors
+License: Apache-2.0
+
+# --------------------------------------------------
+# documentation
+
+Files:
+  docs/*
+  CONTRIBUTING.md
+  README.md
+Copyright: 2023 SAP SE or an SAP affiliate company and Gardener contributors
+License: CC-BY-4.0
+
+# --------------------------------------------------
+# source dependencies
+
 Files: vendor/github.com/google/gnostic/*
 Copyright: 2023 github.com/google/gnostic contributors.
 License: Apache-2.0
