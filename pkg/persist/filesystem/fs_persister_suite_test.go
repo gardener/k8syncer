@@ -10,9 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gardener/k8syncer/pkg/config"
-	"github.com/gardener/k8syncer/pkg/persist/transformers"
-	"github.com/gardener/k8syncer/pkg/utils"
 	"github.com/gardener/landscaper/controller-utils/pkg/logging"
 	"github.com/mandelsoft/vfs/pkg/memoryfs"
 	"github.com/mandelsoft/vfs/pkg/vfs"
@@ -20,6 +17,10 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/gardener/k8syncer/pkg/config"
+	"github.com/gardener/k8syncer/pkg/persist/transformers"
+	"github.com/gardener/k8syncer/pkg/utils"
 )
 
 func TestConfig(t *testing.T) {
