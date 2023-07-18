@@ -7,16 +7,15 @@ package state
 import (
 	"fmt"
 	"reflect"
-	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/k8syncer/pkg/utils"
 )
 
 var _ StateDisplay = &StatusStateDisplay{}
-
-const pathSeparator = "."
 
 type StatusStateDisplay struct {
 	fieldStatusPaths map[string][]string
@@ -26,9 +25,9 @@ type StatusStateDisplay struct {
 func NewStatusStateDisplay(lastSyncedGenerationPath, phasePath, detailPath string, v StateVerbosity) *StatusStateDisplay {
 	return &StatusStateDisplay{
 		fieldStatusPaths: map[string][]string{
-			STATE_FIELD_LAST_SYNCED_GENERATION.name: strings.Split(lastSyncedGenerationPath, pathSeparator),
-			STATE_FIELD_PHASE.name:                  strings.Split(phasePath, pathSeparator),
-			STATE_FIELD_DETAIL.name:                 strings.Split(detailPath, pathSeparator),
+			STATE_FIELD_LAST_SYNCED_GENERATION.name: utils.ParseSimpleJSONPath(lastSyncedGenerationPath),
+			STATE_FIELD_PHASE.name:                  utils.ParseSimpleJSONPath(phasePath),
+			STATE_FIELD_DETAIL.name:                 utils.ParseSimpleJSONPath(detailPath),
 		},
 		verbosity: v,
 	}

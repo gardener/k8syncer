@@ -46,3 +46,39 @@ func HasFinalizer(obj client.Object) bool {
 func RemoveFinalizer(obj client.Object) bool {
 	return controllerutil.RemoveFinalizer(obj, constants.K8SYNCER_FINALIZER)
 }
+
+// ParseSimpleJSONPath splits a string into single fields.
+// '.' is used as separator.
+// To include '.' in a field, escape it with a preceding '\'.
+// To have a field end on '\', escape the final '\' with an additional '\'.
+// Note that escaping happens only for '\' which directly precede a '.'.
+// Examples:
+// a.b.c => a b c
+// a\.b.c => a.b c
+// a\\.b.c => a\ b c
+// a\a.b.c\ => a\a b c\
+func ParseSimpleJSONPath(path string) []string {
+	if path == "" {
+		return []string{}
+	}
+	rawFields := strings.Split(path, ".")
+	fields := []string{}
+	add := false
+	for i, f := range rawFields {
+		newAdd := false
+		if i < len(rawFields)-1 && strings.HasSuffix(f, "\\") {
+			f = strings.TrimRight(f, "\\")
+			if !strings.HasSuffix(f, "\\") {
+				f = f + "."
+				newAdd = true
+			}
+		}
+		if add {
+			fields[len(fields)-1] = fields[len(fields)-1] + f
+		} else {
+			fields = append(fields, f)
+		}
+		add = newAdd
+	}
+	return fields
+}
