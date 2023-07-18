@@ -16,7 +16,7 @@ state:
     detailPath: syncStatus.detail
 ```
 
-The fields `generationPath`, `phasePath`, and `detailPath` all work in the same way: They contain the path to the field within the status where the corresponding state value should be written. The path allows only for simple map field access, accessing list elements or more complex jsonPath logic is not supported.
+The fields `generationPath`, `phasePath`, and `detailPath` all work in the same way: They contain the path to the field within the status where the corresponding state value should be written. The syntax is the 'simple JSONPath' syntax which is explained [here](../usage/simple-jsonpath.md).
 
 The configured verbosity defines which of the fields need to be provided, e.g. for verbosity `phase` no detail will be written into the state, so the field `detailPath` is not required in that case.
 

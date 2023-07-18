@@ -21,4 +21,5 @@
 ## Usage
 
 - [Configuration](usage/configuration.md)
+- [Simple JSONPath](usage/simple-jsonpath.md)
 
