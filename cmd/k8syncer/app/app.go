@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	ctrlrun "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	"github.com/gardener/k8syncer/pkg/config"
 	"github.com/gardener/k8syncer/pkg/controller"
@@ -54,8 +55,11 @@ func (o *Options) run(ctx context.Context) error {
 
 	// build manager
 	mOpts := manager.Options{
-		LeaderElection:     false,
-		MetricsBindAddress: "0",
+		LeaderElection: false,
+		Metrics: server.Options{
+			BindAddress: o.MetricsAddr,
+		},
+		HealthProbeBindAddress: o.ProbeAddr,
 	}
 	mgr, err := ctrlrun.NewManager(ctrlrun.GetConfigOrDie(), mOpts)
 	if err != nil {
