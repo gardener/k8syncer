@@ -17,7 +17,9 @@ import (
 
 // Options describes the options to configure the Landscaper controller.
 type Options struct {
-	ConfigPath string
+	MetricsAddr string
+	ProbeAddr   string
+	ConfigPath  string
 
 	Log    logging.Logger
 	Config *config.K8SyncerConfiguration
@@ -28,6 +30,8 @@ func NewOptions() *Options {
 }
 
 func (o *Options) AddFlags(fs *flag.FlagSet) {
+	fs.StringVar(&o.MetricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	fs.StringVar(&o.ProbeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	fs.StringVar(&o.ConfigPath, "config", "", "specify the path to the configuration file")
 	logging.InitFlags(fs)
 
