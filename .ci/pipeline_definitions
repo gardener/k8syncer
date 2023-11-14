@@ -22,7 +22,7 @@ k8syncer:
 
     steps:
       verify:
-        image: 'golang:1.20'
+        image: 'golang:1.21'
 
   jobs:
     head-update:
