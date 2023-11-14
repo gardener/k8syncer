@@ -1,6 +1,6 @@
 image:
   repository: eu.gcr.io/gardener-project/k8syncer
-  tag: v0.2.0-dev
+  tag: v0.3.0-dev
   # pullSecret: dGVzdGFiYwo=
 
 config:
