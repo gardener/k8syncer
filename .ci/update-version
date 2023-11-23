@@ -6,8 +6,10 @@
 
 pushd $REPO_DIR 1> /dev/null
 
-sed -E -i -e "s?version: [[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+.*?version: $EFFECTIVE_VERSION?1" ./charts/k8syncer/Chart.yaml
+sed -E -i -e "s?version: [[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+.*?version: $EFFECTIVE_VERSION?1" "./charts/k8syncer/Chart.yaml"
+rm -f "./charts/k8syncer/Chart.yaml-e"
 sed -i -e "s?  tag: .*?  tag: ${EFFECTIVE_VERSION}?" "./charts/k8syncer/values.yaml"
+rm -f "./charts/k8syncer/values.yaml-e"
 
 echo "Version set to $EFFECTIVE_VERSION"
 

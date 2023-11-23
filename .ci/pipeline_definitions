@@ -46,6 +46,7 @@ k8syncer:
           preprocess: 'finalize'
         release:
           nextversion: 'bump_minor'
+          release_callback: '.ci/update-version'
           next_version_callback: '.ci/update-version'
           git_tags:
           - ref_template: 'refs/tags/{VERSION}'
