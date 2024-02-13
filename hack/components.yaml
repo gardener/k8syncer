@@ -4,11 +4,11 @@ provider:
   name: sap.com
 
 resources:
-# - name: blueprint
-#   type: landscaper.gardener.cloud/blueprint
-#   input:
-#     path: ../blueprints/k8syncer
-#     type: dir
+- name: blueprint
+  type: landscaper.gardener.cloud/blueprint
+  input:
+    path: ../blueprints/k8syncer
+    type: dir
 - name: chart
   type: helmChart
   version: ${CHART_VERSION}

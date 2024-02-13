@@ -1,0 +1,217 @@
+apiVersion: landscaper.gardener.cloud/v1alpha1
+kind: Blueprint
+jsonSchemaVersion: "https://json-schema.org/draft/2019-09/schema"
+
+imports:
+- name: release-name
+  type: data
+  schema:
+    type: string
+  # helm release name
+
+- name: release-namespace
+  type: data
+  schema:
+    type: string
+  # release namespace
+
+- name: helm-values
+  type: data
+  required: false
+  schema: {}
+  # additional helm values
+  # will not overwrite the ones that can be specifically specified below
+
+- name: image-repo
+  type: data
+  required: false
+  schema:
+    type: string
+  # image repository (defaults to the one from the component descriptor)
+
+- name: image-version
+  type: data
+  required: false
+  schema:
+    type: string
+  # image tag (defaults to the one from the component descriptor)
+
+- name: image-pull-secret
+  type: data
+  required: false
+  schema:
+    type: string
+  # image pull secret (the actual secret, base64 encoded)
+
+- name: image-pull-secret-ref
+  type: data
+  required: false
+  schema:
+    type: string
+  # image pull secret (a reference to a secret in the cluster (in the release namespace) containing the pull secret)
+
+- name: sync-configs
+  type: data
+  schema:
+    type: array
+    items:
+    - type: object
+      properties:
+        finalize:
+          type: boolean
+        id:
+          type: string
+        resource:
+          type: object
+          properties:
+            group:
+              type: string
+            kind:
+              type: string
+            namespace:
+              type: string
+            version:
+              type: string
+          required:
+          - group
+          - kind
+          - version
+        state:
+          type: object
+          properties:
+            statusConfig:
+              type: object
+              properties:
+                detailPath:
+                  type: string
+                generationPath:
+                  type: string
+                phasePath:
+                  type: string
+            type:
+              type: string
+              enum:
+              - none
+              - status
+              - annotation
+            verbosity:
+              type: string
+          required:
+          - type
+        storageRefs:
+          type: array
+          items:
+          - type: object
+            properties:
+              name:
+                type: string
+              subPath:
+                type: string
+            required:
+            - name
+            - subPath
+      required:
+      - id
+      - resource
+      - storageRefs
+  # sync configurations for k8syncer, see docs/usage/configuration.md#sync-configuration
+
+- name: storage-definitions
+  type: data
+  schema:
+    type: array
+    items:
+    - type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum:
+          - filesystem
+          - git
+          - mock
+        filesystemConfig:
+          type: object
+        gitConfig:
+          type: object
+        mockConfig:
+          type: object
+      required:
+      - name
+      - type
+  # storage definitions for k8syncer, see docs/usage/configuration.md#storage-definitions
+
+- name: target-cluster
+  type: target
+  required: false
+  targetType: landscaper.gardener.cloud/kubernetes-cluster
+  # kubeconfig for the cluster watched by k8syncer
+  # host cluster is used if not specified
+
+- name: host-cluster
+  type: target
+  targetType: landscaper.gardener.cloud/kubernetes-cluster
+  # kubeconfig for the cluster k8syncer should be deployed into
+
+
+deployExecutions:
+- name: default
+  type: Spiff
+  template:
+    constants:
+      <<<: (( &temporary ))
+      pull-secret-name: (( imports.release-name "-imagepull" ))
+    resources:
+      <<<: (( &temporary ))
+      chart: (( getResource(cd, "name", "chart") ))
+      image: (( getResource(cd, "name", "image") ))
+    deployItems:
+    - <<<: (( valid(imports.image-pull-secret) ? ~ :~~ )) # remove this entry if no pull secret is given
+      name: pull-secret
+      type: landscaper.gardener.cloud/kubernetes-manifest
+      target:
+        import: host-cluster
+      config:
+        apiVersion: manifest.deployer.landscaper.gardener.cloud/v1alpha2
+        kind: ProviderConfiguration
+        updateStrategy: update
+        manifests:
+        - policy: manage
+          manifest:
+            apiVersion: v1
+            kind: Secret
+            type: kubernetes.io/dockerconfigjson
+            metadata:
+              name: (( constants.pull-secret-name ))
+              namespace: (( imports.release-namespace ))
+            data:
+              .dockerconfigjson: (( imports.image-pull-secret ))
+    - name: controller
+      type: landscaper.gardener.cloud/helm
+      dependsOn:
+      - (( valid(imports.image-pull-secret) ? "pull-secret" :~~ ))
+      target:
+        import: host-cluster
+      config:
+        apiVersion: helm.deployer.landscaper.gardener.cloud/v1alpha1
+        kind: ProviderConfiguration
+        updateStrategy: update
+        name: (( imports.release-name ))
+        namespace: (( imports.release-namespace ))
+        helmDeployment: false
+        chart:
+          ref: (( resources.chart.access.imageReference ))
+        values:
+          <<<: (( imports.helm-values || ~ ))
+          image:
+            repository: (( imports.image-repo || ociRefRepo(resources.image.access.imageReference) ))
+            tag: (( imports.image-version || ociRefVersion(resources.image.access.imageReference) ))
+            pullSecrets:
+            - (( imports.image-pull-secret-ref || ~~ ))
+            - (( valid(imports.image-pull-secret) ? constants.pull-secret-name :~~ ))
+          config:
+            <<<: (( imports.helm-values.config || ~ ))
+            kubeconfig: (( valid(imports.target-cluster) ? imports.target-cluster.spec.config.kubeconfig :~~ ))
+            syncConfigs: (( imports.sync-configs ))
+            storageDefinitions: (( imports.storage-definitions ))

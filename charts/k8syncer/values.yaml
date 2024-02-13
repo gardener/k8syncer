@@ -1,7 +1,8 @@
 image:
   repository: europe-docker.pkg.dev/sap-gcp-cp-k8s-stable-hub/cola/k8syncer
   tag: v0.3.0-dev
-  # pullSecret: dGVzdGFiYwo=
+  # pullSecrets: 
+  # - my-pull-secret
 
 config:
   # kubeconfig: |
@@ -18,8 +19,8 @@ config:
       # For rendering the rbac rules, the resource name is required.
       # It is usually the lowercase plural form of the kind.
       # The chart tries to guess the plural by
-      # - appending an 's' to the kind
       # - if the kind ends with 'y', replacing the 'y' with 'ies'
+      # - appending an 's' to the kind otherwise
       # If none of these guesses results in the correct resource name,
       # you have to manually overwrite it by specifying 'resource' here.
       # resource: dummies

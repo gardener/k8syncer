@@ -6,7 +6,8 @@ metadata:
   labels:
     app: k8syncer
     role: k8syncer
-    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    chart-name: "{{ .Chart.Name }}"
+    chart-version: "{{ .Chart.Version }}"
     release: "{{ .Release.Name }}"
     heritage: "{{ .Release.Service }}"
 spec:
@@ -17,16 +18,22 @@ spec:
       role: k8syncer
   template:
     metadata:
+      annotations:
+        checksum/kubeconfig: {{ include (print $.Template.BasePath "/secret-kubeconfig.yaml") . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/configmap-k8syncer.yaml") . | sha256sum }}
       labels:
         app: k8syncer
         role: k8syncer
-        chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+        chart-name: "{{ .Chart.Name }}"
+        chart-version: "{{ .Chart.Version }}"
         release: "{{ .Release.Name }}"
         heritage: "{{ .Release.Service }}"
     spec:
-      {{- if .Values.image.pullSecret }}
+      {{- if .Values.image.pullSecrets }}
       imagePullSecrets:
-      - name: k8syncer-image-pull
+      {{- range .Values.image.pullSecrets }}
+      - name: {{ . }}
+      {{- end }}
       {{- end }}
       {{- if not .Values.config.kubeconfig }}
       serviceAccountName: k8syncer
