@@ -1,0 +1,23 @@
+name: github.com/gardener/k8syncer
+version: ${CDVERSION}
+provider:
+  name: sap.com
+
+resources:
+# - name: blueprint
+#   type: landscaper.gardener.cloud/blueprint
+#   input:
+#     path: ../blueprints/k8syncer
+#     type: dir
+- name: chart
+  type: helmChart
+  version: ${CHART_VERSION}
+  access:
+    type: ociArtifact
+    imageReference: ${CHART_REGISTRY}/k8syncer:${CHART_VERSION}
+- name: image
+  type: ociImage
+  version: ${IMG_VERSION}
+  access:
+    imageReference: ${IMG_REGISTRY}/k8syncer:${IMG_VERSION}
+    type: ociArtifact

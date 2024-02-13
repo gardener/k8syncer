@@ -1,21 +1,21 @@
 #!/bin/bash -eu
-#
-# SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and Gardener contributors
-#
-# SPDX-License-Identifier: Apache-2.0
 
 PROJECT_ROOT="$(dirname $(realpath $0))/.."
 COMPONENT_NAME="k8syncer"
+IMAGE_REPO="$($PROJECT_ROOT/hack/get-registry.sh --image)/${COMPONENT_NAME}"
 
 CHART_FILE="${PROJECT_ROOT}/charts/${COMPONENT_NAME}/Chart.yaml"
 CHART_VALUES_FILE="${PROJECT_ROOT}/charts/${COMPONENT_NAME}/values.yaml"
 
 # update VERSION file
-echo "$EFFECTIVE_VERSION" > "$PROJECT_ROOT/VERSION"
+echo -n "$EFFECTIVE_VERSION" > "$PROJECT_ROOT/VERSION"
 
 # update version and image tag in helm chart
 sed -E -i -e "s@version: [[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+.*@version: $EFFECTIVE_VERSION@1" "${CHART_FILE}"
 sed -i -e "s@  tag: .*@  tag: ${EFFECTIVE_VERSION}@" "${CHART_VALUES_FILE}"
+
+# update image registry in helm chart (usually doesn't change, but is easily forgotten if it does)
+sed -i -e "s@  repository: .*@  repository: ${IMAGE_REPO}@" "${CHART_VALUES_FILE}"
 
 # remove backup files (created by sed on MacOS)
 for file in "${CHART_FILE}" "${CHART_VALUES_FILE}"; do

@@ -1,0 +1,18 @@
+#!/bin/bash -eu
+
+PROJECT_ROOT="$(dirname $(realpath $0))/.."
+COMPONENT_NAME="k8syncer"
+IMAGE_REPO="$($PROJECT_ROOT/hack/get-registry.sh --image)/${COMPONENT_NAME}"
+
+"${PROJECT_ROOT}/.ci/prepare-docker"
+"${PROJECT_ROOT}/.ci/ensure-make"
+
+(
+  cd "${PROJECT_ROOT}"
+  if [[ "$EFFECTIVE_VERSION" == *dev* ]]; then
+    export ADDITIONAL_TAG="dev-$EFFECTIVE_VERSION"
+  else
+    export ADDITIONAL_TAG="latest"
+  fi
+  make docker-buildx
+)

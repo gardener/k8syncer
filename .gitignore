@@ -18,4 +18,5 @@ coverage.*
 .vscode
 .DS_Store
 
-tmp
+tmp/
+bin/

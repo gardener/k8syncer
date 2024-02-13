@@ -1,5 +1,5 @@
 image:
-  repository: eu.gcr.io/gardener-project/k8syncer
+  repository: europe-docker.pkg.dev/sap-gcp-cp-k8s-stable-hub/cola/k8syncer
   tag: v0.3.0-dev
   # pullSecret: dGVzdGFiYwo=
 

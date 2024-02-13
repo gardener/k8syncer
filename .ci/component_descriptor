@@ -1,29 +1,26 @@
-#!/usr/bin/env python3
+#!/bin/bash -eu
 
-from pathlib import Path
-import os
-import yaml
+# creates a dummy component descriptor
 
-project_root = Path(__file__).parent.parent
-in_path = os.getenv("BASE_DEFINITION_PATH")
-out_path = os.getenv("COMPONENT_DESCRIPTOR_PATH")
-version = os.getenv("EFFECTIVE_VERSION")
+PROJECT_ROOT="$(dirname $(realpath $0))/.."
+HACK_DIR="$PROJECT_ROOT/hack"
 
-def read_data(path: str) -> str:
-    with open(path, "r") as file:
-        return file.read()
+VERSION="$($HACK_DIR/get-version.sh)"
+COMPONENT_REGISTRY="$($HACK_DIR/get-registry.sh --component)"
 
-cd = yaml.safe_load(read_data(in_path))
-cd["component"]["resources"].append({
-    "name": "chart",
-    "type": "helmChart",
-    "version": version,
-    "input": {
-        "type": "helm",
-        "path": str(project_root.joinpath("charts", "k8syncer")),
-        "repository": "/charts"
-    }
-})
-
-with open(out_path, "w") as file:
-    yaml.safe_dump(cd, stream=file, default_flow_style=False)
+cat << EOF > "$COMPONENT_DESCRIPTOR_PATH"
+component:
+  componentReferences: []
+  name: github.com/gardener/dummy
+  provider: sap.com
+  repositoryContexts:
+  - baseUrl: ${COMPONENT_REGISTRY%%/*}
+    componentNameMapping: urlPath
+    subPath: ${COMPONENT_REGISTRY#*/}
+    type: OCIRegistry
+  resources: []
+  sources: []
+  version: v0.0.0-dummy
+meta:
+  schemaVersion: v2
+EOF

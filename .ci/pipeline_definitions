@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 k8syncer:
-  template: 'default'
   base_definition:
     repo: ~
 
@@ -13,22 +12,26 @@ k8syncer:
         inject_effective_version: true
       component_descriptor:
         upload: no-upload
-      publish:
-        dockerimages:
-          k8syncer:
-            registry: 'gcr-readwrite'
-            target: 'k8syncer'
-            image: 'eu.gcr.io/gardener-project/k8syncer'
-            tag_as_latest: true
 
     steps:
       verify:
         image: 'golang:1.21'
+      image:
+        privilege_mode: privileged
+        trait_depends:
+        - version
+        depends:
+        - verify
+      component:
+        trait_depends:
+        - version
+        depends:
+        - verify
+        - image
 
   jobs:
     head-update:
       traits:
-        draft_release: ~
         notifications:
           default:
             on_error:
@@ -49,5 +52,4 @@ k8syncer:
           nextversion: 'bump_minor'
           release_callback: '.ci/update-version'
           next_version_callback: '.ci/update-version'
-          git_tags:
-          - ref_template: 'refs/tags/{VERSION}'
+          release_notes_policy: disabled
