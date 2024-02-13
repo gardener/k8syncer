@@ -7,6 +7,7 @@ import yaml
 project_root = Path(__file__).parent.parent
 in_path = os.getenv("BASE_DEFINITION_PATH")
 out_path = os.getenv("COMPONENT_DESCRIPTOR_PATH")
+version = os.getenv("EFFECTIVE_VERSION")
 
 def read_data(path: str) -> str:
     with open(path, "r") as file:
@@ -16,6 +17,7 @@ cd = yaml.safe_load(read_data(in_path))
 cd["component"]["resources"].append({
     "name": "chart",
     "type": "helmChart",
+    "version": version,
     "input": {
         "type": "helm",
         "path": str(project_root.joinpath("charts", "k8syncer")),
