@@ -4,13 +4,22 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-pushd $REPO_DIR 1> /dev/null
+PROJECT_ROOT="$(dirname $(realpath $0))/.."
+COMPONENT_NAME="k8syncer"
 
-sed -E -i -e "s?version: [[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+.*?version: $EFFECTIVE_VERSION?1" "./charts/k8syncer/Chart.yaml"
-rm -f "./charts/k8syncer/Chart.yaml-e"
-sed -i -e "s?  tag: .*?  tag: ${EFFECTIVE_VERSION}?" "./charts/k8syncer/values.yaml"
-rm -f "./charts/k8syncer/values.yaml-e"
+CHART_FILE="${PROJECT_ROOT}/charts/${COMPONENT_NAME}/Chart.yaml"
+CHART_VALUES_FILE="${PROJECT_ROOT}/charts/${COMPONENT_NAME}/values.yaml"
+
+# update VERSION file
+echo "$EFFECTIVE_VERSION" > "$PROJECT_ROOT/VERSION"
+
+# update version and image tag in helm chart
+sed -E -i -e "s@version: [[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+.*@version: $EFFECTIVE_VERSION@1" "${CHART_FILE}"
+sed -i -e "s@  tag: .*@  tag: ${EFFECTIVE_VERSION}@" "${CHART_VALUES_FILE}"
+
+# remove backup files (created by sed on MacOS)
+for file in "${CHART_FILE}" "${CHART_VALUES_FILE}"; do
+  rm -f "${file}-e"
+done
 
 echo "Version set to $EFFECTIVE_VERSION"
-
-popd 1> /dev/null

@@ -11,7 +11,8 @@ k8syncer:
       version:
         preprocess: 'inject-commit-hash'
         inject_effective_version: true
-      component_descriptor: ~
+      component_descriptor:
+        upload: no-upload
       publish:
         dockerimages:
           k8syncer:
