@@ -1,6 +1,6 @@
 image:
   repository: europe-docker.pkg.dev/sap-gcp-cp-k8s-stable-hub/cola/k8syncer
-  tag: v0.3.0-dev
+  tag: v0.3.0
   # pullSecrets: 
   # - my-pull-secret
 
