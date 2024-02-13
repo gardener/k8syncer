@@ -5,7 +5,7 @@ import os
 import yaml
 
 project_root = Path(__file__).parent.parent
-in_path = os.getenv("BASE_DEFININITION_PATH")
+in_path = os.getenv("BASE_DEFINITION_PATH")
 out_path = os.getenv("COMPONENT_DESCRIPTOR_PATH")
 
 def read_data(path: str) -> str:
