@@ -1,0 +1,12 @@
+#!/bin/bash -eu
+
+PROJECT_ROOT="$(dirname $(realpath $0))/.."
+COMPONENT_NAME="k8syncer"
+IMAGE_PREFIX="$($PROJECT_ROOT/hack/get-registry.sh)/${COMPONENT_NAME}"
+
+# start docker daemon
+launch-dockerd.sh
+
+# configure credentials
+mkdir -p "$HOME/.docker"
+gardener-ci docker cfg --image "$IMAGE_PREFIX" > $HOME/.docker/config.json

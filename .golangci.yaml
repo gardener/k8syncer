@@ -3,6 +3,9 @@ run:
   deadline: 10m
   go: '1.21'
 
+  skip-files:
+  - "tmp/.*"
+
 issues:
   exclude:
   - "Error return value of `.(.*)..Append` is not checked"

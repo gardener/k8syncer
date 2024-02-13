@@ -7,11 +7,12 @@ package utils
 import (
 	"context"
 
-	"github.com/gardener/k8syncer/pkg/utils"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"github.com/gardener/k8syncer/pkg/utils"
 )
 
 func FinalizeAll(ctx context.Context, c client.Client, gvk schema.GroupVersionKind, ns string) error {

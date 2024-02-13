@@ -4,7 +4,8 @@ metadata:
   name: k8syncer-config
   namespace: {{ .Release.Namespace }}
   labels:
-    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    chart-name: "{{ .Chart.Name }}"
+    chart-version: "{{ .Chart.Version }}"
     release: "{{ .Release.Name }}"
     heritage: "{{ .Release.Service }}"
 data:
