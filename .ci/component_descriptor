@@ -18,7 +18,7 @@ cd["component"]["resources"].append({
     "type": "helmChart",
     "input": {
         "type": "helm",
-        "path": project_root.joinpath("charts", "k8syncer"),
+        "path": str(project_root.joinpath("charts", "k8syncer")),
         "repository": "/charts"
     }
 })
