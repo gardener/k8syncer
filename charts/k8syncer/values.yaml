@@ -34,10 +34,10 @@ config:
   - name: mockStorage
     type: mock
 
-# resources:
-#   requests:
-#     cpu: 100m
-#     memory: 256Mi
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
 #   limits:
 #     cpu: 500m
 #     memory: 2Gi
