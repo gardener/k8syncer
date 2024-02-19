@@ -39,6 +39,8 @@ type GitRepo struct {
 	LocalPath string
 	// Auth is the authentification information for the git repository.
 	Auth transport.AuthMethod
+	// SecondaryAuth is the secondary authentification information for the git repository. It is used if the first one failed and may be nil.
+	SecondaryAuth transport.AuthMethod
 	// Fs is the filesystem used for the repository.
 	Fs vfs.FileSystem
 
@@ -50,7 +52,7 @@ type GitRepo struct {
 // NewRepo creates a new GitRepo instance, which can be used to interact with a git repository.
 // Note that this only initializes the struct, in order to perform any git actions on the repository, Initialize has to be called first.
 // The GitRepo uses a projection filesystem projecting to the given localPath. This means that all operations on the returned GitRepo's filesystem have to treat the repository directory as root.
-func NewRepo(baseFs vfs.FileSystem, url, branch, localPath string, auth transport.AuthMethod) (*GitRepo, error) {
+func NewRepo(baseFs vfs.FileSystem, url, branch, localPath string, auth, secondaryAuth transport.AuthMethod) (*GitRepo, error) {
 	fs, err := projectionfs.New(baseFs, localPath)
 	if err != nil {
 		return nil, fmt.Errorf("error creating projection filesystem: %w", err)
@@ -60,6 +62,7 @@ func NewRepo(baseFs vfs.FileSystem, url, branch, localPath string, auth transpor
 		Branch:             branch,
 		LocalPath:          localPath,
 		Auth:               auth,
+		SecondaryAuth:      secondaryAuth,
 		Fs:                 fs,
 		hasUnpushedCommits: false,
 		lock:               &sync.Mutex{},
@@ -261,12 +264,23 @@ func (r *GitRepo) gitPush(pullBefore, isRetry bool) error {
 		}
 	}
 
-	err := r.repo.Push(&git.PushOptions{
+	pushOptions := &git.PushOptions{
 		RemoteName: defaultRemoteName,
 		Auth:       r.Auth,
 		RefSpecs:   []gitcfg.RefSpec{refspecFromBranch(r.Branch)},
-	})
+	}
+	err := r.repo.Push(pushOptions)
 	if err != nil {
+		if errors.Is(err, transport.ErrAuthorizationFailed) && r.SecondaryAuth != nil {
+			// try with secondary auth information
+			pushOptions.Auth = r.SecondaryAuth
+			err2 := r.repo.Push(pushOptions)
+			if err2 == nil {
+				// successful with second auth, ignore error from primary auth try
+				return nil
+			}
+			return fmt.Errorf("error during 'git push' (secondary auth): %w", err2)
+		}
 		if isRetry {
 			return fmt.Errorf("error during 'git push': %w", err)
 		}
@@ -282,19 +296,28 @@ func (r *GitRepo) gitPull(force bool) error {
 		return fmt.Errorf("error getting worktree: %w", err)
 	}
 
-	err = w.Pull(&git.PullOptions{
+	pullOptions := &git.PullOptions{
 		RemoteName:    defaultRemoteName,
 		SingleBranch:  true,
 		ReferenceName: plumbing.NewBranchReferenceName(r.Branch),
 		Auth:          r.Auth,
 		Force:         force,
-	})
+	}
+	err = w.Pull(pullOptions)
 	// ignore errors which come from
 	// 1. the checked-out repo already being up-to-date
 	// 2. the branch not being found upstream (this can happen if it was created locally)
 	// 3. the repository being empty
 	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) && !errors.Is(err, plumbing.ErrReferenceNotFound) && !errors.Is(err, git.NoMatchingRefSpecError{}) && !errors.Is(err, transport.ErrEmptyRemoteRepository) {
-		return fmt.Errorf("error during 'git pull': %w", err)
+		if errors.Is(err, transport.ErrAuthorizationFailed) && r.SecondaryAuth != nil {
+			pullOptions.Auth = r.SecondaryAuth
+			err2 := w.Pull(pullOptions)
+			if err2 != nil && !errors.Is(err2, git.NoErrAlreadyUpToDate) && !errors.Is(err2, plumbing.ErrReferenceNotFound) && !errors.Is(err2, git.NoMatchingRefSpecError{}) && !errors.Is(err2, transport.ErrEmptyRemoteRepository) {
+				return fmt.Errorf("error during 'git pull' (secondary auth): %w", err2)
+			}
+		} else {
+			return fmt.Errorf("error during 'git pull': %w", err)
+		}
 	}
 
 	return nil
@@ -336,13 +359,22 @@ func (r *GitRepo) gitCheckout() error {
 
 	branchRef := plumbing.NewBranchReferenceName(r.Branch)
 	// try to fetch branch from remote
-	err = r.repo.Fetch(&git.FetchOptions{
+	fetchOptions := &git.FetchOptions{
 		RemoteName: defaultRemoteName,
 		RefSpecs:   []gitcfg.RefSpec{refspecFromBranch(r.Branch)},
 		Auth:       r.Auth,
-	})
+	}
+	err = r.repo.Fetch(fetchOptions)
 	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) && !errors.Is(err, git.NoMatchingRefSpecError{}) && !errors.Is(err, transport.ErrEmptyRemoteRepository) {
-		return fmt.Errorf("error during 'git fetch': %s", err)
+		if errors.Is(err, transport.ErrAuthorizationFailed) && r.SecondaryAuth != nil {
+			fetchOptions.Auth = r.SecondaryAuth
+			err2 := r.repo.Fetch(fetchOptions)
+			if err2 != nil && !errors.Is(err2, git.NoErrAlreadyUpToDate) && !errors.Is(err2, git.NoMatchingRefSpecError{}) && !errors.Is(err2, transport.ErrEmptyRemoteRepository) {
+				return fmt.Errorf("error during 'git fetch' (secondary auth): %s", err2)
+			}
+		} else {
+			return fmt.Errorf("error during 'git fetch': %s", err)
+		}
 	}
 
 	// evaluate whether branch exists
@@ -443,7 +475,7 @@ func (dr *DummyRemote) NewRepo() (*GitRepo, error) {
 		return nil, err
 	}
 
-	repo, err := NewRepo(dr.Fs, dr.RootPath, dr.Branch, tmpdir, nil)
+	repo, err := NewRepo(dr.Fs, dr.RootPath, dr.Branch, tmpdir, nil, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -107,6 +107,10 @@ type GitConfiguration struct {
 	Exclusive bool `json:"exclusive"`
 	// Auth contains the auth information needed to push commits to the repository.
 	Auth *GitRepoAuth `json:"auth,omitempty"`
+	// SecondaryAuth contains a second auth configuration, which is only used if the one under Auth does not work.
+	// This can be used for setups where there are always two active keys that are rotated by invalidating the primary one and promoting the secondary one to primary.
+	// +optional
+	SecondaryAuth *GitRepoAuth `json:"secondaryAuth,omitempty"`
 }
 
 // GitRepoAuth represents different possibilities to authenticate against a git repository

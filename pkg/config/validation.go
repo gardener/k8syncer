@@ -284,6 +284,9 @@ func (v *validator) validateGitRepoConfig(repoConfig *GitConfiguration, fldPath 
 	}
 
 	allErrs = append(allErrs, v.validateGitRepoAuth(repoConfig.Auth, fldPath.Child("auth"))...)
+	if repoConfig.SecondaryAuth != nil {
+		allErrs = append(allErrs, v.validateGitRepoAuth(repoConfig.SecondaryAuth, fldPath.Child("secondaryAuth"))...)
+	}
 
 	return allErrs
 }
