@@ -12,6 +12,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/k8syncer/pkg/state"
 	"github.com/gardener/k8syncer/pkg/utils/constants"
@@ -82,6 +83,12 @@ func (c *Controller) updateStateOnResource(ctx context.Context, obj *unstructure
 func (c *Controller) updateWithRetry(ctx context.Context, obj *unstructured.Unstructured, changeFunc func(obj *unstructured.Unstructured) (sets.Set[string], error), maxRetries int) error {
 	success := false
 	for tries := 0; !success; tries++ {
+		if tries > 0 {
+			// this is not the first try
+			// fetch object from cluster, as client.Update does not update object in case of error
+			_ = c.Client.Get(ctx, client.ObjectKeyFromObject(obj), obj)
+			// ignore error, as failing to get the object will likely result in failing to update the object which will be returned if it happens too often
+		}
 		// try to write the state
 		changedFields, err := changeFunc(obj)
 		if err != nil {
@@ -110,7 +117,7 @@ func (c *Controller) updateWithRetry(ctx context.Context, obj *unstructured.Unst
 			// update resource
 			err := c.Client.Update(ctx, obj)
 			if err != nil {
-				if !apierrors.IsConflict(err) || tries == retryLimit {
+				if !apierrors.IsConflict(err) || tries >= maxRetries {
 					// only retry update conflicts
 					return fmt.Errorf("error updating object: %w", err)
 				}
