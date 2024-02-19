@@ -68,7 +68,7 @@ var _ = Describe("Git Wrapper Tests", func() {
 
 		// new repo with default branch 'bar'
 		branch1 := "bar"
-		repo1, err := NewRepo(osfs.OsFs, dr.RootPath, branch1, tempdir, nil)
+		repo1, err := NewRepo(osfs.OsFs, dr.RootPath, branch1, tempdir, nil, nil)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(repo1.Initialize(staticDiscardLogger)).To(Succeed())
 
@@ -81,7 +81,7 @@ var _ = Describe("Git Wrapper Tests", func() {
 
 		// new repo with default branch 'foobar'
 		branch2 := "foobar"
-		repo2, err := NewRepo(osfs.OsFs, dr.RootPath, branch2, tempdir, nil)
+		repo2, err := NewRepo(osfs.OsFs, dr.RootPath, branch2, tempdir, nil, nil)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(repo2.Initialize(staticDiscardLogger)).To(Succeed())
 
@@ -121,7 +121,7 @@ var _ = Describe("Git Wrapper Tests", func() {
 		Expect(exists).To(BeTrue(), "file '%s' should not be present on branch %s", branch2file, branch2)
 
 		// opening the existing repo from repo3 with its currently checked-out branch
-		repo4, err := NewRepo(osfs.OsFs, dr.RootPath, repo3.Branch, repo3.LocalPath, nil)
+		repo4, err := NewRepo(osfs.OsFs, dr.RootPath, repo3.Branch, repo3.LocalPath, nil, nil)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(repo4.Initialize(staticDiscardLogger)).To(Succeed())
 		// should be on branch "foobar", so one file should exist
@@ -144,7 +144,7 @@ var _ = Describe("Git Wrapper Tests", func() {
 
 		// opening the existing repo from repo4 with a new branch
 		branch5 := "xyz"
-		repo5, err := NewRepo(osfs.OsFs, dr.RootPath, branch5, repo4.LocalPath, nil)
+		repo5, err := NewRepo(osfs.OsFs, dr.RootPath, branch5, repo4.LocalPath, nil, nil)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(repo5.Initialize(staticDiscardLogger)).To(Succeed())
 		// should be on branch "xyz" which is based on "bar", so one file should exist

@@ -22,6 +22,8 @@ The `subPath` field in the storage reference is expected to be a directory path 
         -----BEGIN RSA PRIVATE KEY-----
         ...
       privateKeyFile: /etc/ssh/foo/cert.key
+    secondaryAuth: # optional
+      # see auth
 ```
 
 - `url` - The git repo URL. To avoid problems with concurrency, there must only be one git storage definition for a given URL, so it has to be unique.
@@ -36,6 +38,7 @@ The `subPath` field in the storage reference is expected to be a directory path 
   - `password` - The password, if the type is `username_password`. If the type is `ssh`, the decryption key for the SSH private key must be specified here, unless it is not encrypted.
   - `privateKey` - The SSH private key as inline text. If encrypted, the decryption key must be provided via the `password` field. For type `ssh`, either `privateKey` or `privateKeyFile` must be set. The field is ignored for type `username_password`.
   - `privateKeyFile` - The path to the file containing the SSH private key. If the key is encrypted, the decryption key must be provided via the `password` field. For type `ssh`, either `privateKey` or `privateKeyFile` must be set. The field is ignored for type `username_password`.
+- `secondaryAuth` - Secondary authentication information for the git repository. If specified, a remote operation that failed due to authorization issues with the primary auth will be retried immediately with the secondary auth. If successful, no error will be thrown. 
 
 Optionally, a [filesystem configuration](filesystem.md) can be provided. If not, the filesystem default values (described in the linked documentation) are used, except that `inMemory` defaults to `true` in this case.
 

@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/gardener/landscaper/controller-utils/pkg/logging"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/mandelsoft/vfs/pkg/memoryfs"
 	"github.com/mandelsoft/vfs/pkg/osfs"
 	"github.com/mandelsoft/vfs/pkg/vfs"
@@ -66,8 +67,15 @@ func New(ctx context.Context, stDef *config.StorageDefinition) (*GitPersister, e
 	if err != nil {
 		return nil, fmt.Errorf("error creating auth method from config: %w", err)
 	}
+	var gitSecondaryAuth transport.AuthMethod
+	if gitCfg.SecondaryAuth != nil {
+		gitSecondaryAuth, err = git.AuthFromConfig(gitCfg.SecondaryAuth)
+		if err != nil {
+			return nil, fmt.Errorf("error creating secondary auth method from config: %w", err)
+		}
+	}
 
-	gitRepo, err := git.NewRepo(fsp.Fs, gitCfg.URL, gitCfg.Branch, rootPath, gitAuth)
+	gitRepo, err := git.NewRepo(fsp.Fs, gitCfg.URL, gitCfg.Branch, rootPath, gitAuth, gitSecondaryAuth)
 	if err != nil {
 		return nil, fmt.Errorf("error during git repo creation: %w", err)
 	}
