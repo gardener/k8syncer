@@ -212,20 +212,20 @@ func (c *Controller) handleDelete(ctx context.Context, obj *unstructured.Unstruc
 			}
 			return errs.Aggregate()
 		}
-		if !exists {
-			curLog.Debug("No data found for current resource, skipping deletion")
-			return nil
-		}
-		err = storage.Persister.Delete(curCtx, obj.GetName(), obj.GetNamespace(), c.GVK, storage.SubPath)
-		if err != nil {
-			errMsg := "error while deleting data"
-			curLog.Error(err, errMsg)
-			errs := utils.NewErrorList(fmt.Errorf("%s: %w", errMsg, err))
-			if hasFinalizer {
-				err2 := c.updateStateOnResource(ctx, obj, state.STATE_FIELD_PHASE, state.PHASE_ERROR_DELETING, state.STATE_FIELD_DETAIL, errs.Aggregate().Error())
-				errs.Append(err2)
+		if exists {
+			err = storage.Persister.Delete(curCtx, obj.GetName(), obj.GetNamespace(), c.GVK, storage.SubPath)
+			if err != nil {
+				errMsg := "error while deleting data"
+				curLog.Error(err, errMsg)
+				errs := utils.NewErrorList(fmt.Errorf("%s: %w", errMsg, err))
+				if hasFinalizer {
+					err2 := c.updateStateOnResource(ctx, obj, state.STATE_FIELD_PHASE, state.PHASE_ERROR_DELETING, state.STATE_FIELD_DETAIL, errs.Aggregate().Error())
+					errs.Append(err2)
+				}
+				return errs.Aggregate()
 			}
-			return errs.Aggregate()
+		} else {
+			curLog.Debug("No data found for current resource")
 		}
 	}
 
