@@ -20,7 +20,7 @@ spec:
     metadata:
       annotations:
         checksum/kubeconfig: {{ include (print $.Template.BasePath "/secret-kubeconfig.yaml") . | sha256sum }}
-        checksum/config: {{ include (print $.Template.BasePath "/configmap-k8syncer.yaml") . | sha256sum }}
+        checksum/k8syncer-config: {{ include (print $.Template.BasePath "/secret-k8syncer-config.yaml") . | sha256sum }}
       labels:
         app: k8syncer
         role: k8syncer
@@ -69,7 +69,7 @@ spec:
       - name: config
         projected:
           sources:
-          - configMap:
+          - secret:
               name: k8syncer-config
         {{- if .Values.config.kubeconfig }}
           - secret:
