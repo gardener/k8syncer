@@ -1,4 +1,5 @@
 # K8Syncer
+[![REUSE status](https://api.reuse.software/badge/github.com/gardener/k8syncer)](https://api.reuse.software/info/github.com/gardener/k8syncer)
 
 K8Syncer is a tool to backup k8s resources into some kind of storage. While it was designed to be easily extensible with further storage options, the primary goal was to be able to backup resources from a k8s cluster into a git repository, and the tool does not support much more than this use-case at the moment.
 
