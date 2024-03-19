@@ -39,6 +39,12 @@ k8syncer:
               recipients:
               - committers
               - codeowners
+      steps:
+        format:
+          publish_to:
+          - source
+          depends:
+          - verify
 
     pull-request:
       traits:
@@ -53,3 +59,9 @@ k8syncer:
           release_callback: '.ci/update-version'
           next_version_callback: '.ci/update-version'
           release_notes_policy: disabled
+      steps:
+        format:
+          publish_to:
+          - source
+          depends:
+          - verify

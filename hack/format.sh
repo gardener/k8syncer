@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-PROJECT_ROOT="$(dirname $(realpath $0))/.."
+PROJECT_ROOT="$(realpath $(dirname $0)/..)"
 
 if [[ -z ${LOCALBIN:-} ]]; then
   LOCALBIN="$PROJECT_ROOT/bin"

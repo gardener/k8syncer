@@ -1,6 +1,12 @@
-#!/bin/bash -eu
+#!/bin/bash
+#
+# SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and Gardener contributors
+#
+# SPDX-License-Identifier: Apache-2.0
 
-PROJECT_ROOT="$(dirname $(realpath $0))/.."
+set -euo pipefail
+
+PROJECT_ROOT="$(realpath $(dirname $0)/..)"
 COMPONENT_NAME="k8syncer"
 IMAGE_REPO="$($PROJECT_ROOT/hack/get-registry.sh --image)/${COMPONENT_NAME}"
 
@@ -10,8 +16,9 @@ CHART_VALUES_FILE="${PROJECT_ROOT}/charts/${COMPONENT_NAME}/values.yaml"
 # update VERSION file
 echo -n "$EFFECTIVE_VERSION" > "$PROJECT_ROOT/VERSION"
 
-# update version and image tag in helm chart
+# update version, appVersion, and image tag in helm chart
 sed -E -i -e "s@version: [[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+.*@version: $EFFECTIVE_VERSION@1" "${CHART_FILE}"
+sed -E -i -e "s@appVersion: [[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+.*@appVersion: $EFFECTIVE_VERSION@1" "${CHART_FILE}"
 sed -i -e "s@  tag: .*@  tag: ${EFFECTIVE_VERSION}@" "${CHART_VALUES_FILE}"
 
 # update image registry in helm chart (usually doesn't change, but is easily forgotten if it does)

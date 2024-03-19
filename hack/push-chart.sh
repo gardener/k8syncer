@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-PROJECT_ROOT="$(dirname $(realpath $0))/.."
+PROJECT_ROOT="$(realpath $(dirname $0)/..)"
 HACK_DIR="$PROJECT_ROOT/hack"
 source "$HACK_DIR/lib.sh"
 

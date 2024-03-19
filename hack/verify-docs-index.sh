@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-PROJECT_ROOT="$(dirname $(realpath $0))/.."
+PROJECT_ROOT="$(realpath $(dirname $0)/..)"
 
 echo "> Checking if documentation index needs changes"
 doc_index_file="$PROJECT_ROOT/docs/README.md"
