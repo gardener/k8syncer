@@ -1,6 +1,12 @@
-#!/bin/bash -eu
+#!/bin/bash
+#
+# SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and Gardener contributors
+#
+# SPDX-License-Identifier: Apache-2.0
+
+set -euo pipefail
 
 if ! which make 1>/dev/null; then
   echo "> Installing make ..."
-  apk add make 1>/dev/null
+  apk add --no-cache --no-progress make 1>/dev/null
 fi
