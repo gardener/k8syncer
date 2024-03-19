@@ -1,6 +1,6 @@
 #!/bin/bash -eu
 
-PROJECT_ROOT="$(dirname $(realpath $0))/.."
+PROJECT_ROOT="$(realpath $(dirname $0)/..)"
 COMPONENT_NAME="k8syncer"
 IMAGE_REPO="$($PROJECT_ROOT/hack/get-registry.sh --image)/${COMPONENT_NAME}"
 

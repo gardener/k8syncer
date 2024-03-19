@@ -2,7 +2,7 @@
 
 # creates a dummy component descriptor
 
-PROJECT_ROOT="$(dirname $(realpath $0))/.."
+PROJECT_ROOT="$(realpath $(dirname $0)/..)"
 HACK_DIR="$PROJECT_ROOT/hack"
 
 VERSION="$($HACK_DIR/get-version.sh)"

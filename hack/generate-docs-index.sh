@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-PROJECT_ROOT="$(dirname $(realpath $0))/.."
+PROJECT_ROOT="$(realpath $(dirname $0)/..)"
 DOCS_FOLDER="${PROJECT_ROOT}/docs"
 METAFILE_NAME=".docnames"
 
