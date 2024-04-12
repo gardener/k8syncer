@@ -45,7 +45,7 @@ spec:
         command:
         - /k8syncer
         - --config=/etc/config/config.yaml
-        {{- if .Values.config.kubeconfig }}
+        {{- if or .Values.config.kubeconfig .Values.config.cluster }}
         - --kubeconfig=/etc/config
         {{- end }}
         {{- if .Values.logging }}
@@ -71,7 +71,7 @@ spec:
           sources:
           - secret:
               name: k8syncer-config
-        {{- if .Values.config.kubeconfig }}
+        {{- if or .Values.config.kubeconfig .Values.config.cluster }}
           - secret:
               name: k8syncer-target
         {{- end }}
