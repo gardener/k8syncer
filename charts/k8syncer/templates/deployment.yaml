@@ -71,7 +71,30 @@ spec:
           sources:
           - secret:
               name: k8syncer-config
-        {{- if or .Values.config.kubeconfig .Values.config.cluster }}
+          {{- if or .Values.config.kubeconfig .Values.config.cluster }}
+          {{- if .Values.config.kubeconfig }}
           - secret:
               name: k8syncer-target
-        {{- end }}
+          {{- else }}
+          - secret:
+              name: k8syncer-target
+              items:
+              - key: host
+                path: host
+              {{- if .Values.config.cluster.caData }}
+              - key: caData
+                path: ca.crt
+              {{- end }}
+          - serviceAccountToken:
+              path: token
+              expirationSeconds: 7200
+              audience: {{ .Values.config.cluster.audience }}
+          {{- if .Values.config.cluster.caConfigMapName }}
+          - configMap:
+              name: {{ .Values.config.cluster.caConfigMapName }}
+              items:
+                key: ca.crt
+                path: ca.crt
+          {{- end }}
+          {{- end }}
+          {{- end }}
