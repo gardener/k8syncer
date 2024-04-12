@@ -35,7 +35,7 @@ spec:
       - name: {{ . }}
       {{- end }}
       {{- end }}
-      {{- if not .Values.config.kubeconfig }}
+      {{- if not (or .Values.config.kubeconfig .Values.config.cluster) }}
       serviceAccountName: k8syncer
       {{- end }}
       containers:
@@ -46,7 +46,7 @@ spec:
         - /k8syncer
         - --config=/etc/config/config.yaml
         {{- if .Values.config.kubeconfig }}
-        - --kubeconfig=/etc/config/kubeconfig
+        - --kubeconfig=/etc/config
         {{- end }}
         {{- if .Values.logging }}
         {{- if .Values.logging.verbosity }}

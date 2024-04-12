@@ -61,7 +61,7 @@ func (o *Options) run(ctx context.Context) error {
 		},
 		HealthProbeBindAddress: o.ProbeAddr,
 	}
-	mgr, err := ctrlrun.NewManager(ctrlrun.GetConfigOrDie(), mOpts)
+	mgr, err := ctrlrun.NewManager(o.ClusterConfig, mOpts)
 	if err != nil {
 		return fmt.Errorf("unable to setup manager: %w", err)
 	}
