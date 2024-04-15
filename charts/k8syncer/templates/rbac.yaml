@@ -1,4 +1,4 @@
-{{- if not .Values.config.kubeconfig }}
+{{- if not (or .Values.config.kubeconfig .Values.config.cluster) }}
 apiVersion: {{ include "rbacversion" . }}
 kind: ClusterRole
 metadata:

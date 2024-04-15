@@ -212,6 +212,6 @@ deployExecutions:
             - (( valid(imports.image-pull-secret) ? constants.pull-secret-name :~~ ))
           config:
             <<<: (( imports.helm-values.config || ~ ))
-            kubeconfig: (( valid(imports.target-cluster) ? imports.target-cluster.spec.config.kubeconfig :~~ ))
+            cluster: (( valid(imports.target-cluster) ? ( imports.target-cluster.spec.config || imports.target-cluster.spec ) :~~ ))
             syncConfigs: (( imports.sync-configs ))
             storageDefinitions: (( imports.storage-definitions ))

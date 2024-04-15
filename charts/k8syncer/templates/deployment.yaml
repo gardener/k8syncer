@@ -35,7 +35,7 @@ spec:
       - name: {{ . }}
       {{- end }}
       {{- end }}
-      {{- if not .Values.config.kubeconfig }}
+      {{- if not (or .Values.config.kubeconfig .Values.config.cluster) }}
       serviceAccountName: k8syncer
       {{- end }}
       containers:
@@ -45,8 +45,8 @@ spec:
         command:
         - /k8syncer
         - --config=/etc/config/config.yaml
-        {{- if .Values.config.kubeconfig }}
-        - --kubeconfig=/etc/config/kubeconfig
+        {{- if or .Values.config.kubeconfig .Values.config.cluster }}
+        - --kubeconfig=/etc/config
         {{- end }}
         {{- if .Values.logging }}
         {{- if .Values.logging.verbosity }}
@@ -71,7 +71,30 @@ spec:
           sources:
           - secret:
               name: k8syncer-config
-        {{- if .Values.config.kubeconfig }}
+          {{- if or .Values.config.kubeconfig .Values.config.cluster }}
+          {{- if .Values.config.kubeconfig }}
           - secret:
               name: k8syncer-target
-        {{- end }}
+          {{- else }}
+          - secret:
+              name: k8syncer-target
+              items:
+              - key: host
+                path: host
+              {{- if .Values.config.cluster.caData }}
+              - key: caData
+                path: ca.crt
+              {{- end }}
+          - serviceAccountToken:
+              path: token
+              expirationSeconds: 7200
+              audience: {{ .Values.config.cluster.audience }}
+          {{- if .Values.config.cluster.caConfigMapName }}
+          - configMap:
+              name: {{ .Values.config.cluster.caConfigMapName }}
+              items:
+                key: ca.crt
+                path: ca.crt
+          {{- end }}
+          {{- end }}
+          {{- end }}

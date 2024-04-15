@@ -5,10 +5,16 @@ image:
   # - my-pull-secret
 
 config:
-  # kubeconfig: |
-  #   apiVersion: v1
-  #   clusters:
-  #   - cluster: ...
+  # cluster:
+  #   # specify either kubeconfig or host, audience, and one of caData or caConfigMapName.
+  #   kubeconfig: |
+  #     apiVersion: v1
+  #     clusters:
+  #     - cluster: ...
+  #   host: https://api.mycluster.com
+  #   audience: ...
+  #   caData: ...
+  #   caConfigMapName: ...
 
   syncConfigs:
   - id: dummyWatcher

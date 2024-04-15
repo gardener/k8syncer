@@ -140,6 +140,7 @@ LINTER_VERSION ?= 1.55.2
 OCM_VERSION ?= 0.8.0
 HELM_VERSION ?= v3.13.2
 JQ_VERSION ?= 1.6
+SETUP_ENVTEST_VERSION ?= release-0.17
 
 .PHONY: localbin
 localbin:
@@ -160,9 +161,10 @@ golangci-lint: localbin ## Download golangci-lint locally if necessary. If wrong
 
 .PHONY: envtest
 envtest: localbin ## Download envtest-setup locally if necessary.
-	@test -s $(LOCALBIN)/setup-envtest || \
-	( echo "Installing setup-envtest ..."; \
-	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest )
+	@test -s $(LOCALBIN)/setup-envtest && test -s $(LOCALBIN)/setup-envtest_version && cat $(LOCALBIN)/setup-envtest_version | grep -q $(SETUP_ENVTEST_VERSION) || \
+	( echo "Installing setup-envtest $(SETUP_ENVTEST_VERSION) ..."; \
+	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@$(SETUP_ENVTEST_VERSION) && \
+	echo $(SETUP_ENVTEST_VERSION) > $(LOCALBIN)/setup-envtest_version )
 
 .PHONY: ocm
 ocm: localbin ## Install OCM CLI if necessary.
