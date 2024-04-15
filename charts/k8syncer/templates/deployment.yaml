@@ -93,7 +93,7 @@ spec:
           - configMap:
               name: {{ .Values.config.cluster.caConfigMapName }}
               items:
-                key: ca.crt
+              - key: ca.crt
                 path: ca.crt
           {{- end }}
           {{- end }}
